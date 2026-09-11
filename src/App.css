@@ -1,0 +1,864 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+}
+
+/* --- Laukaisukartta: Päänäkymä (glassmorphism) ---
+ * Prioriteetit: 1) käytettävyys 2) nopeus 3) datan tallennus 4) näyttävyys.
+ * Siksi: kaukalo pysyy täysin umpinaisena ja terävänä (max. kontrasti laukausten
+ * merkintään), ensisijaiset toimintopainikkeet (Peruuta/Tallenna) pidetään
+ * umpinaisina eikä lasimaisina, ja backdrop-filter rajataan paikallaan
+ * pysyville palkeille – ei koskaan vedettävän kaukalon päälle. */
+.shotmap-screen {
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+  color: #fff;
+  /* Syvyyttä antavat hehkut ilman filter:blur() (halpa piirtää, ei rasita
+     laitetta) – lasipaneelit saavat kontrastinsa tästä backdrop-filterillä. */
+  background:
+    radial-gradient(circle at 12% -8%, rgba(255, 217, 59, 0.22), transparent 42%),
+    radial-gradient(circle at 105% 0%, rgba(56, 189, 248, 0.16), transparent 38%),
+    radial-gradient(circle at 50% 115%, rgba(255, 217, 59, 0.1), transparent 48%),
+    linear-gradient(165deg, #0a0f1f 0%, #0b1a3a 55%, #13275c 100%);
+}
+
+/* Lasipaneelien yhteinen pohja: puolikirkas + sumennettu. */
+.shotmap-topbar,
+.shotmap-periodbar,
+.shotmap-bottombar {
+  background: rgba(13, 22, 46, 0.55);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+}
+
+/* Selaimet ilman backdrop-filter-tukea: umpinainen tumma pohja säilyttää
+   silti kontrastin (käytettävyys ennen tyyliä). */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .shotmap-topbar,
+  .shotmap-periodbar,
+  .shotmap-bottombar {
+    background: #0d162e;
+  }
+}
+
+/* 1. Yläpalkki */
+.shotmap-topbar {
+  flex-shrink: 0;
+  height: 56px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  gap: 12px;
+  z-index: 20;
+}
+
+.shotmap-nav-btn {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #ffd93b;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s, border-color 0.15s, transform 0.05s;
+}
+
+.shotmap-nav-btn:hover {
+  background: rgba(255, 217, 59, 0.16);
+  border-color: rgba(255, 217, 59, 0.45);
+}
+
+.shotmap-nav-btn:active {
+  transform: scale(0.96);
+}
+
+.shotmap-matchinfo {
+  text-align: center;
+  min-width: 0;
+  flex: 1;
+}
+
+.shotmap-matchinfo__teams {
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.shotmap-matchinfo__teams .team-saipa {
+  color: #ffd93b;
+}
+
+.shotmap-matchinfo__teams .team-vs {
+  opacity: 0.6;
+  font-size: 12px;
+  margin: 0 6px;
+}
+
+.shotmap-matchinfo__meta {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.65);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.shotmap-user-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.shotmap-username {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  padding: 5px 11px;
+  border-radius: 999px;
+}
+
+.shotmap-logout-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.75);
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.shotmap-logout-btn:hover {
+  border-color: #ef4444;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* 2. Eräpalkki */
+.shotmap-periodbar {
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  z-index: 15;
+}
+
+.shotmap-periodbar__label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #ffd93b;
+  text-transform: uppercase;
+}
+
+.shotmap-periodbar__buttons {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.period-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.85);
+  padding: 7px 13px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s, transform 0.05s;
+}
+
+.period-btn:hover {
+  background: rgba(255, 255, 255, 0.13);
+  color: #ffffff;
+}
+
+.period-btn:active {
+  transform: scale(0.96);
+}
+
+.period-btn--active {
+  background: #ffd93b;
+  color: #0b1a3a;
+  border-color: #ffd93b;
+  box-shadow: 0 4px 16px rgba(255, 217, 59, 0.4);
+}
+
+.period-btn--active:hover {
+  background: #ffe066;
+  color: #0b1a3a;
+}
+
+/* Tallennettu/lukittu erä erottuu palkista heti, ei vain valittuna */
+.period-btn--locked:not(.period-btn--active) {
+  border-color: rgba(52, 211, 153, 0.4);
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.period-btn__badge {
+  background: rgba(0, 0, 0, 0.25);
+  color: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 999px;
+}
+
+.period-btn--active .period-btn__badge {
+  background: rgba(11, 26, 58, 0.18);
+}
+
+/* 3. Kaukaloareena – tarkoituksella täysin umpinainen ja terävä: laukausten
+   merkintä vaatii maksimikontrastin, ei lasiefektiä. */
+.shotmap-arena {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 14px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.35), transparent 55%),
+    linear-gradient(135deg, #ffd93b 0%, #f4b400 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.shotmap-rink-wrapper {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rink {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  cursor: crosshair;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  filter: drop-shadow(0 18px 34px rgba(11, 26, 58, 0.35)) drop-shadow(0 2px 6px rgba(11, 26, 58, 0.2));
+}
+
+/* 4. Alapalkki */
+.shotmap-bottombar {
+  flex-shrink: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.05);
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  z-index: 20;
+}
+
+.shotmap-bottombar__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Ensisijaiset toiminnot pidetään umpinaisina (ei lasia): käytettävyys
+   voittaa tyylin – Peruuta/Tallenna pitää tunnistaa vilkaisulla kentän
+   laidalta, ei arvailla läpikuultavuuden läpi. */
+.action-btn {
+  border: 1px solid transparent;
+  padding: 9px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s, transform 0.05s, box-shadow 0.15s;
+}
+
+.action-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.action-btn--undo {
+  background: #ffd93b;
+  color: #0b1a3a;
+  box-shadow: 0 2px 10px rgba(255, 217, 59, 0.3);
+}
+
+.action-btn--undo:hover:not(:disabled) {
+  background: #ffe37a;
+  transform: translateY(-1px);
+}
+
+.action-btn--undo:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.action-btn--clear {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.action-btn--clear:hover:not(:disabled) {
+  border-color: #ef4444;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.action-btn--save {
+  background-color: #34d399;
+  color: #064e3b;
+  box-shadow: 0 2px 10px rgba(52, 211, 153, 0.3);
+}
+
+.action-btn--save:hover:not(:disabled) {
+  background-color: #10b981;
+  color: white;
+}
+
+.action-btn--save.locked {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: rgba(255, 255, 255, 0.55);
+  border-color: rgba(255, 255, 255, 0.16);
+  opacity: 1;
+  box-shadow: none;
+}
+
+.shotmap-stats {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.stat-pill {
+  padding: 5px 9px;
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.85);
+  white-space: nowrap;
+}
+
+.stat-pill b {
+  margin-left: 3px;
+  font-weight: 800;
+}
+
+.stat-pill--goal b {
+  color: #22c55e;
+}
+
+.stat-pill--save b {
+  color: #38bdf8;
+}
+
+.stat-pill--miss b {
+  color: #fbbf24;
+}
+
+.stat-pill--block b {
+  color: #f87171;
+}
+
+.stat-pill--total b {
+  color: #ffd93b;
+}
+
+/* Näppäimistöllä/kytkimellä käytettäessä selkeä kohdistusrengas */
+.shotmap-nav-btn:focus-visible,
+.period-btn:focus-visible,
+.action-btn:focus-visible,
+.shotmap-logout-btn:focus-visible {
+  outline: 2px solid #ffd93b;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shotmap-nav-btn,
+  .period-btn,
+  .action-btn,
+  .shotmap-logout-btn {
+    transition: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .shotmap-topbar {
+    padding: 0 10px;
+    height: 50px;
+  }
+  .shotmap-bottombar {
+    padding: 8px 10px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .shotmap-stats {
+    justify-content: center;
+  }
+  .shotmap-bottombar__actions {
+    justify-content: space-between;
+  }
+  /* Kevyempi sumennus hitaammille/mobiililaitteille (nopeus-prioriteetti) */
+  .shotmap-topbar,
+  .shotmap-periodbar,
+  .shotmap-bottombar {
+    backdrop-filter: blur(12px) saturate(140%);
+    -webkit-backdrop-filter: blur(12px) saturate(140%);
+  }
+}
+
+/* --- Alkunäkymä: pelin valinta --- */
+.startview {
+  min-height: 100vh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 24px 16px 48px;
+  background: linear-gradient(135deg, #ffd93b 0%, #f4b400 100%);
+}
+
+.startview__card {
+  width: 100%;
+  max-width: 480px;
+  background: #fff;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+}
+
+.startview__head h1 {
+  margin: 0;
+  font-size: 24px;
+  color: #0b1a3a;
+}
+
+.startview__series {
+  margin: 2px 0 0;
+  font-weight: 700;
+  color: #b8860b;
+}
+
+.startview__lead {
+  margin: 10px 0 0;
+  color: #5b6b8c;
+  font-size: 14px;
+}
+
+.startview__subhead {
+  margin: 22px 0 8px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8a97b3;
+}
+
+.startview__note {
+  margin: 16px 0 0;
+  font-size: 14px;
+  color: #5b6b8c;
+}
+
+.startview__note--error {
+  color: #b91c1c;
+}
+
+.startview__skip {
+  margin-top: 22px;
+  width: 100%;
+  padding: 12px;
+  border: 1px dashed #c9d3e6;
+  border-radius: 10px;
+  background: transparent;
+  color: #5b6b8c;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.startview__skip:hover {
+  background: #f5f8ff;
+}
+
+.link-button {
+  margin-left: 8px;
+  border: none;
+  background: none;
+  color: #1f4fd8;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.match-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.match-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #e3e9f5;
+  border-radius: 10px;
+  background: #fbfcff;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, transform 0.05s;
+}
+
+.match-row:hover {
+  border-color: #1f4fd8;
+  background: #f5f8ff;
+}
+
+.match-row:active {
+  transform: scale(0.99);
+}
+
+.match-row--next {
+  border-color: #16a34a;
+  background: #f0fdf4;
+}
+
+.match-row__date {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #5b6b8c;
+}
+
+.match-row__badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #fff;
+  background: #16a34a;
+  border-radius: 999px;
+  padding: 2px 7px;
+}
+
+.match-row__teams {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #0b1a3a;
+}
+
+.match-row__saipa {
+  color: #b8860b;
+}
+
+.match-row__vs {
+  font-size: 13px;
+  color: #8a97b3;
+  font-weight: 700;
+}
+
+.match-row__venue {
+  font-size: 12px;
+  color: #8a97b3;
+}
+
+.danger {
+  border: 1px solid #f0c2c2;
+  background: #fdf0f0;
+  color: #b91c1c;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.app-footer {
+  margin-top: 24px;
+  text-align: center;
+  color: #7f95c6;
+  font-size: 12px;
+}
+
+/* --- Käyttäjäpalkki & kirjautumistila --- */
+.user-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding: 8px 12px;
+  background: #f4f7fc;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #0b1a3a;
+}
+
+.user-status-bar__name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.user-status-bar__logout {
+  background: none;
+  border: 1px solid #c9d3e6;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #5b6b8c;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.user-status-bar__logout:hover {
+  background: #fff;
+  border-color: #b91c1c;
+  color: #b91c1c;
+}
+
+/* --- Kirjautumisnäkymä --- */
+.login-view {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  background: linear-gradient(135deg, #ffd93b 0%, #f4b400 100%);
+}
+
+.login-card {
+  width: 100%;
+  max-width: 420px;
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 32px 28px;
+  box-shadow: 0 16px 48px rgba(11, 26, 58, 0.22);
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.login-logo-badge {
+  display: inline-block;
+  background: #0b1a3a;
+  color: #ffd93b;
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 4px 14px;
+  border-radius: 999px;
+  margin-bottom: 8px;
+}
+
+.login-header h1 {
+  margin: 0;
+  font-size: 26px;
+  color: #0b1a3a;
+  font-weight: 800;
+}
+
+.login-subhead {
+  margin: 4px 0 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #b8860b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.login-title {
+  margin: 0 0 4px;
+  font-size: 18px;
+  color: #0b1a3a;
+  font-weight: 700;
+}
+
+.login-error-banner {
+  padding: 10px 14px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+}
+
+.form-group label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #5b6b8c;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 12px 14px;
+  font-size: 15px;
+  border: 1.5px solid #d4dbe8;
+  border-radius: 10px;
+  outline: none;
+  background: #fbfcfe;
+  color: #0b1a3a;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.form-group input:focus {
+  border-color: #f4b400;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(244, 180, 0, 0.2);
+}
+
+.form-group input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.login-submit-btn {
+  margin-top: 8px;
+  width: 100%;
+  padding: 14px;
+  background: #0b1a3a;
+  color: #ffd93b;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: transform 0.05s, background-color 0.15s;
+}
+
+.login-submit-btn:hover:not(:disabled) {
+  background: #142854;
+}
+
+.login-submit-btn:active:not(:disabled) {
+  transform: scale(0.99);
+}
+
+.login-submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.login-toggle-mode {
+  text-align: center;
+  font-size: 13px;
+  color: #5b6b8c;
+  margin-top: 4px;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  color: #0b1a3a;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+  font-size: 13px;
+}
+
+.login-local-fallback {
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px dashed #e2e8f0;
+  text-align: center;
+}
+
+.login-fallback-btn {
+  width: 100%;
+  padding: 10px;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.login-fallback-btn:hover {
+  background: #e2e8f0;
+}

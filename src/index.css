@@ -1,0 +1,32 @@
+:root {
+  --bg: #0b1220;
+  --panel: #ffffff;
+  --ink: #0b1a3a;
+  --muted: #5b6b8c;
+  --line: #d9e2f2;
+  --brand: #1f4fd8;
+  color-scheme: light;
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: linear-gradient(180deg, #0b1220, #16233f);
+  color: var(--ink);
+  min-height: 100vh;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
