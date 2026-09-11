@@ -6,17 +6,8 @@ import StartView from './components/StartView'
 import ShotMap from './components/ShotMap'
 import './App.css'
 
-const MATCH_KEY = 'saipau19.selectedMatch'
 // Erikoisarvo: käyttäjä valitsi "ilman peliä".
 const NO_MATCH = { id: null }
-
-function readSelected() {
-  try {
-    return JSON.parse(localStorage.getItem(MATCH_KEY) ?? 'null')
-  } catch {
-    return null
-  }
-}
 
 const USER_KEY = 'saipau19.localUser'
 
@@ -32,37 +23,22 @@ export default function App() {
   const [user, setUser] = useState(() => (isFirebaseConfigured ? null : readLocalUser()))
   const [authReady, setAuthReady] = useState(!isFirebaseConfigured)
   const [bypassLocal, setBypassLocal] = useState(() => (!isFirebaseConfigured && Boolean(readLocalUser())))
-  const [selected, setSelected] = useState(readSelected)
+  // Ei lueta viimeksi valittua peliä localStoragesta käynnistyksessä: jokaisen
+  // kirjautumisen (myös istunnon palautumisen sivun latauksessa) jälkeen pitää
+  // aina näyttää pelin valinta ensin, ettei jää vahingossa merkitsemään
+  // laukauksia vanhaan/väärään otteluun.
+  const [selected, setSelected] = useState(null)
 
   useEffect(() => {
     if (!isFirebaseConfigured || !auth) {
       return
     }
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      if (currentUser) {
-        const allowedEmails = ['matti.kaehkoenen@gmail.com', 'veskapenkilla@saipau19.app'];
-        if (!allowedEmails.includes(currentUser.email)) {
-          alert('Tällä sähköpostilla ei ole pääsyä sovellukseen.');
-          await signOut(auth);
-          setUser(null);
-          setAuthReady(true);
-          return;
-        }
-      }
       setUser(currentUser)
       setAuthReady(true)
     })
     return unsubscribe
   }, [])
-
-  useEffect(() => {
-    try {
-      if (selected) localStorage.setItem(MATCH_KEY, JSON.stringify(selected))
-      else localStorage.removeItem(MATCH_KEY)
-    } catch {
-      /* ohitetaan */
-    }
-  }, [selected])
 
   const chooseMatch = useCallback((match) => setSelected(match), [])
   const skip = useCallback(() => setSelected(NO_MATCH), [])
@@ -84,6 +60,7 @@ export default function App() {
     }
     setUser(null)
     setBypassLocal(false)
+    setSelected(null)
     try {
       localStorage.removeItem(USER_KEY)
     } catch {

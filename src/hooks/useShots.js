@@ -9,6 +9,7 @@ import {
   query,
   serverTimestamp,
   writeBatch,
+  getDocs,
   setDoc,
 } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from '../firebase'
@@ -43,7 +44,7 @@ const norm = (matchId) => matchId || null
  *
  * Palauttaa { shots, addShot, removeShot, clearShots, backend }.
  */
-export function useShots(matchId = null) {
+export function useShots(matchId = null, user = null) {
   const activeMatch = norm(matchId)
   const [allShots, setAllShots] = useState(() => (isFirebaseConfigured ? [] : readLocal()))
   const [lockedPeriods, setLockedPeriods] = useState([])
@@ -66,19 +67,20 @@ export function useShots(matchId = null) {
       const matchLocks = []
       snap.docs.forEach((d) => {
         const data = d.data()
-        if (norm(data.matchId) === activeMatch) {
+        if (norm(data.matchId) === activeMatch && (!user || data.userId === user.uid)) {
           matchLocks.push(data.period)
         }
       })
       setLockedPeriods(matchLocks)
     })
-  }, [activeMatch])
+  }, [activeMatch, user])
 
   const lockPeriod = useCallback(
     async (period) => {
       if (isFirebaseConfigured) {
-        await setDoc(doc(db, 'locked_periods', `${activeMatch || 'default'}_${period}`), {
+        await setDoc(doc(db, 'locked_periods', `${activeMatch || 'default'}_${period}_${user?.uid || 'anon'}`), {
           matchId: activeMatch,
+          userId: user?.uid || null,
           period,
           lockedAt: serverTimestamp(),
         })
@@ -92,7 +94,7 @@ export function useShots(matchId = null) {
         setLockedPeriods(current)
       }
     },
-    [activeMatch],
+    [activeMatch, user],
   )
 
   // Firestore-tilaus (kaikki laukaukset; suodatus tehdään muistissa)
@@ -121,13 +123,13 @@ export function useShots(matchId = null) {
   }, [allShots])
 
   const shots = useMemo(
-    () => allShots.filter((s) => norm(s.matchId) === activeMatch),
-    [allShots, activeMatch],
+    () => allShots.filter((s) => norm(s.matchId) === activeMatch && (!isFirebaseConfigured || !user || s.userId === user.uid)),
+    [allShots, activeMatch, user],
   )
 
   const addShot = useCallback(
     async (shot) => {
-      const withMatch = { ...shot, matchId: activeMatch }
+      const withMatch = { ...shot, matchId: activeMatch, userId: user?.uid || null, userEmail: user?.email || null }
       if (isFirebaseConfigured) {
         await addDoc(collection(db, 'shots'), { ...withMatch, createdAt: serverTimestamp() })
         return
@@ -137,7 +139,7 @@ export function useShots(matchId = null) {
         { ...withMatch, id: crypto.randomUUID(), createdAt: Date.now() },
       ])
     },
-    [activeMatch],
+    [activeMatch, user],
   )
 
   const removeShot = useCallback(async (id) => {
@@ -153,13 +155,13 @@ export function useShots(matchId = null) {
       const snap = await getDocs(collection(db, 'shots'))
       const batch = writeBatch(db)
       snap.docs.forEach((d) => {
-        if (norm(d.data().matchId) === activeMatch) batch.delete(d.ref)
+        if (norm(d.data().matchId) === activeMatch && (!user || d.data().userId === user.uid)) batch.delete(d.ref)
       })
       await batch.commit()
       return
     }
     setAllShots((prev) => prev.filter((s) => norm(s.matchId) !== activeMatch))
-  }, [activeMatch])
+  }, [activeMatch, user])
 
   const clearPeriodShots = useCallback(async (period) => {
     if (isFirebaseConfigured) {
@@ -167,7 +169,7 @@ export function useShots(matchId = null) {
       const batch = writeBatch(db)
       snap.docs.forEach((d) => {
         const data = d.data()
-        if (norm(data.matchId) === activeMatch && (data.period ?? 1) === period) {
+        if (norm(data.matchId) === activeMatch && (data.period ?? 1) === period && (!user || data.userId === user.uid)) {
           batch.delete(d.ref)
         }
       })
@@ -177,7 +179,7 @@ export function useShots(matchId = null) {
     setAllShots((prev) =>
       prev.filter((s) => !(norm(s.matchId) === activeMatch && (s.period ?? 1) === period)),
     )
-  }, [activeMatch])
+  }, [activeMatch, user])
 
   const endMatch = useCallback(async (matchInfo) => {
     if (!isFirebaseConfigured || !activeMatch) return;
@@ -191,14 +193,16 @@ export function useShots(matchId = null) {
     }
 
     // Tallenna completed_matches -kokoelmaan
-    await setDoc(doc(db, 'completed_matches', activeMatch), {
+    await setDoc(doc(db, 'completed_matches', `${activeMatch}_${user?.uid || 'anon'}`), {
       matchId: activeMatch,
+      userId: user?.uid || null,
+      userEmail: user?.email || null,
       matchInfo: matchInfo || null,
       shots: allShots.filter((s) => norm(s.matchId) === activeMatch),
       apiData: apiData,
       completedAt: serverTimestamp()
     });
-  }, [activeMatch, allShots]);
+  }, [activeMatch, allShots, user]);
 
   return {
     shots,

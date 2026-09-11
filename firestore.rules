@@ -2,11 +2,10 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Käyttäjähallinta tapahtuu Firebase Authenticationin puolella,
+    // joten riittää että käyttäjä on kirjautunut sisään.
     function isAllowedUser() {
-      return request.auth != null && (
-        request.auth.token.email == 'matti.kaehkoenen@gmail.com' ||
-        request.auth.token.email == 'veskapenkilla@saipau19.app'
-      );
+      return request.auth != null;
     }
 
     match /shots/{shotId} {

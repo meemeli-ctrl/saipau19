@@ -1,7 +1,12 @@
 // Firebase-alustus. Sovellus toimii myös ilman konfiguraatiota:
 // tällöin tiedot tallennetaan selaimen localStorageen.
 import { initializeApp } from 'firebase/app'
-import { getFirestore } from 'firebase/firestore'
+import {
+  initializeFirestore,
+  getFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+} from 'firebase/firestore'
 import { getAuth } from 'firebase/auth'
 
 const firebaseConfig = {
@@ -23,7 +28,21 @@ let auth = null
 
 if (isFirebaseConfigured) {
   app = initializeApp(firebaseConfig)
-  db = getFirestore(app)
+  try {
+    // Pysyvä IndexedDB-välimuisti: jo synkronoidut laukaukset ja erälukitukset
+    // pysyvät näkyvissä vaikka nettiyhteys katkeaa tai sivu ladataan uudelleen
+    // offline-tilassa (esim. kaukalon laidalla huonolla yhteydellä). Uudet
+    // kirjoitukset jonottuvat automaattisesti ja lähtevät kun yhteys palaa.
+    db = initializeFirestore(app, {
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+    })
+  } catch (err) {
+    console.warn(
+      'Firestoren pysyvä välimuisti ei käynnistynyt – käytetään väliaikaista muistivälimuistia.',
+      err,
+    )
+    db = getFirestore(app)
+  }
   auth = getAuth(app)
 } else {
   console.info(

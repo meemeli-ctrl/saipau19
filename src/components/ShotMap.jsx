@@ -42,7 +42,7 @@ function ShotMarker({ shot }) {
 }
 
 export default function ShotMap({ user, onLogout, match = null, onChangeMatch }) {
-  const { shots, addShot, removeShot, clearShots, clearPeriodShots, lockedPeriods, lockPeriod, endMatch } = useShots(match?.id ?? null)
+  const { shots, addShot, removeShot, clearShots, clearPeriodShots, lockedPeriods, lockPeriod, endMatch } = useShots(match?.id ?? null, user)
   const [period, setPeriod] = useState(1)
 
   // "Kaikki"-näkymässä lisätty laukaus kirjautuu 1. erälle (ks. handleAddShot),
