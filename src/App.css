@@ -884,3 +884,17 @@ html, body, #root {
 .login-fallback-btn:hover {
   background: #e2e8f0;
 }
+
+.action-btn--end-match {
+  background-color: #ef4444;
+  color: white;
+  border: 1px solid #b91c1c;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-right: 15px;
+}
+.action-btn--end-match:hover {
+  background-color: #dc2626;
+}

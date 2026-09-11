@@ -15,5 +15,8 @@ service cloud.firestore {
     match /locked_periods/{lockId} {
       allow read, write: if isAllowedUser();
     }
+    match /completed_matches/{matchId} {
+      allow read, write: if isAllowedUser();
+    }
   }
 }

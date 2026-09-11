@@ -94,3 +94,17 @@ export function splitMatches(matches, now = new Date()) {
   past.reverse() // uusin pelattu ensin
   return { upcoming, past, next: upcoming[0] ?? null }
 }
+
+/**
+ * Hakee yksittäisen ottelun tarkemmat tiedot ja tapahtumat (maalit).
+ */
+export async function fetchMatchDetails(matchId) {
+  if (!matchId) return null
+  try {
+    const data = await call('getMatch', { match_id: matchId })
+    return data.match || null
+  } catch (err) {
+    console.error('Virhe haettaessa ottelun tietoja:', err)
+    return null
+  }
+}

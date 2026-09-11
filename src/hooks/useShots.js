@@ -9,10 +9,10 @@ import {
   query,
   serverTimestamp,
   writeBatch,
-  getDocs,
   setDoc,
 } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from '../firebase'
+import { fetchMatchDetails } from '../api/tulospalvelu'
 
 const STORAGE_KEY = 'saipau19.shots'
 
@@ -179,6 +179,27 @@ export function useShots(matchId = null) {
     )
   }, [activeMatch])
 
+  const endMatch = useCallback(async (matchInfo) => {
+    if (!isFirebaseConfigured || !activeMatch) return;
+    
+    // Hae API-data
+    let apiData = null;
+    try {
+      apiData = await fetchMatchDetails(activeMatch);
+    } catch (e) {
+      console.warn("Failed to fetch API data", e);
+    }
+
+    // Tallenna completed_matches -kokoelmaan
+    await setDoc(doc(db, 'completed_matches', activeMatch), {
+      matchId: activeMatch,
+      matchInfo: matchInfo || null,
+      shots: allShots.filter((s) => norm(s.matchId) === activeMatch),
+      apiData: apiData,
+      completedAt: serverTimestamp()
+    });
+  }, [activeMatch, allShots]);
+
   return {
     shots,
     addShot,
@@ -187,6 +208,7 @@ export function useShots(matchId = null) {
     clearPeriodShots,
     lockedPeriods,
     lockPeriod,
+    endMatch,
     backend: isFirebaseConfigured ? 'Firestore' : 'localStorage',
   }
 }

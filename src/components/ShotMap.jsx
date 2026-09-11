@@ -42,7 +42,7 @@ function ShotMarker({ shot }) {
 }
 
 export default function ShotMap({ user, onLogout, match = null, onChangeMatch }) {
-  const { shots, addShot, removeShot, clearShots, clearPeriodShots, lockedPeriods, lockPeriod } = useShots(match?.id ?? null)
+  const { shots, addShot, removeShot, clearShots, clearPeriodShots, lockedPeriods, lockPeriod, endMatch } = useShots(match?.id ?? null)
   const [period, setPeriod] = useState(1)
 
   // "Kaikki"-näkymässä lisätty laukaus kirjautuu 1. erälle (ks. handleAddShot),
@@ -202,6 +202,22 @@ export default function ShotMap({ user, onLogout, match = null, onChangeMatch })
         </div>
 
         <div className="shotmap-user-tools">
+          {match && (
+            <button
+              type="button"
+              className="action-btn action-btn--end-match"
+              onClick={async () => {
+                if (confirm('Haluatko varmasti päättää ottelun? Ottelun tiedot tallennetaan ja erät lukitaan.')) {
+                  await endMatch(match);
+                  alert('Ottelu päätetty ja tiedot tallennettu.');
+                  onChangeMatch(); // Palataan takaisin listaukseen
+                }
+              }}
+              title="Päätä ottelu ja tallenna data"
+            >
+              🏁 Päätä ottelu
+            </button>
+          )}
           {user && (
             <span className="shotmap-username" title={`Kirjautunut: ${user.email}`}>
               👤 {user.displayName || user.email?.replace(/@saipau19\.app$/, '')}
