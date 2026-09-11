@@ -1,8 +1,6 @@
 import { useState } from 'react'
 import {
   signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  updateProfile,
   GoogleAuthProvider,
   signInWithPopup
 } from 'firebase/auth'
@@ -44,7 +42,6 @@ function getReadableErrorMessage(errorCode) {
 }
 
 export default function LoginView({ onLocalLogin, onBypassLocal }) {
-  const [isRegistering, setIsRegistering] = useState(false)
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -98,13 +95,7 @@ export default function LoginView({ onLocalLogin, onBypassLocal }) {
 
     setLoading(true)
     try {
-      if (isRegistering) {
-        const userCred = await createUserWithEmailAndPassword(auth, email, password)
-        // Tallennetaan käyttäjän syöttämä nimi display nameksi
-        await updateProfile(userCred.user, { displayName: trimmedUsername })
-      } else {
-        await signInWithEmailAndPassword(auth, email, password)
-      }
+      await signInWithEmailAndPassword(auth, email, password)
     } catch (err) {
       console.error('Auth error:', err)
       setError(getReadableErrorMessage(err.code))
@@ -124,7 +115,7 @@ export default function LoginView({ onLocalLogin, onBypassLocal }) {
 
         <form className="login-form" onSubmit={handleSubmit}>
           <h2 className="login-title">
-            {isRegistering ? 'Luo uusi tunnus' : 'Kirjaudu sisään'}
+            Kirjaudu sisään
           </h2>
 
           {error && <div className="login-error-banner">{error}</div>}
@@ -150,7 +141,7 @@ export default function LoginView({ onLocalLogin, onBypassLocal }) {
             <input
               id="login-password"
               type="password"
-              autoComplete={isRegistering ? 'new-password' : 'current-password'}
+              autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
@@ -164,47 +155,10 @@ export default function LoginView({ onLocalLogin, onBypassLocal }) {
             className="login-submit-btn"
             disabled={loading}
           >
-            {loading ? (
-              <span className="btn-spinner">Käsitellään…</span>
-            ) : isRegistering ? (
-              'Luo tunnus ja kirjaudu'
-            ) : (
-              'Kirjaudu sisään'
-            )}
+            {loading ? <span className="btn-spinner">Käsitellään…</span> : 'Kirjaudu sisään'}
           </button>
 
-          <div className="login-toggle-mode">
-            {isRegistering ? (
-              <p>
-                Onko sinulla jo tunnus?{' '}
-                <button
-                  type="button"
-                  className="link-btn"
-                  onClick={() => {
-                    setIsRegistering(false)
-                    setError('')
-                  }}
-                >
-                  Kirjaudu sisään
-                </button>
-              </p>
-            ) : (
-              <p>
-                Eikö tunnusta vielä ole?{' '}
-                <button
-                  type="button"
-                  className="link-btn"
-                  onClick={() => {
-                    setIsRegistering(true)
-                    setError('')
-                  }}
-                >
-                  Luo uusi tunnus
-                </button>
-              </p>
-            )}
-          </div>
-  <div className="login-divider">
+          <div className="login-divider">
             <span>TAI</span>
           </div>
           

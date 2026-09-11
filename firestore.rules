@@ -2,11 +2,18 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isAllowedUser() {
+      return request.auth != null && (
+        request.auth.token.email == 'matti.kaehkoenen@gmail.com' ||
+        request.auth.token.email == 'veskapenkilla@saipau19.app'
+      );
+    }
+
     match /shots/{shotId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isAllowedUser();
     }
     match /locked_periods/{lockId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isAllowedUser();
     }
   }
 }

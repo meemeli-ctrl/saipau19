@@ -38,7 +38,17 @@ export default function App() {
     if (!isFirebaseConfigured || !auth) {
       return
     }
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      if (currentUser) {
+        const allowedEmails = ['matti.kaehkoenen@gmail.com', 'veskapenkilla@saipau19.app'];
+        if (!allowedEmails.includes(currentUser.email)) {
+          alert('Tällä sähköpostilla ei ole pääsyä sovellukseen.');
+          await signOut(auth);
+          setUser(null);
+          setAuthReady(true);
+          return;
+        }
+      }
       setUser(currentUser)
       setAuthReady(true)
     })
