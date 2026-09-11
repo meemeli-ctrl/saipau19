@@ -10,7 +10,6 @@ import {
   serverTimestamp,
   writeBatch,
   getDocs,
-  setDoc
 } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from '../firebase'
 
@@ -46,47 +45,6 @@ const norm = (matchId) => matchId || null
 export function useShots(matchId = null) {
   const activeMatch = norm(matchId)
   const [allShots, setAllShots] = useState(() => (isFirebaseConfigured ? [] : readLocal()))
-  const [lockedPeriods, setLockedPeriods] = useState([])
-
-  // Locked periods subscription
-  useEffect(() => {
-    if (!isFirebaseConfigured) {
-      try {
-        const localLocks = JSON.parse(localStorage.getItem('saipau19.lockedPeriods_' + (activeMatch || 'default')) || '[]');
-        setLockedPeriods(localLocks);
-      } catch (e) {}
-      return;
-    }
-    const q = query(collection(db, 'locked_periods'));
-    return onSnapshot(q, (snap) => {
-      const matchLocks = [];
-      snap.docs.forEach((d) => {
-        const data = d.data();
-        if (norm(data.matchId) === activeMatch) {
-          matchLocks.push(data.period);
-        }
-      });
-      setLockedPeriods(matchLocks);
-    });
-  }, [activeMatch]);
-
-  const lockPeriod = useCallback(async (period) => {
-    if (isFirebaseConfigured) {
-      await setDoc(doc(db, 'locked_periods', `${activeMatch || 'default'}_${period}`), {
-        matchId: activeMatch,
-        period,
-        lockedAt: serverTimestamp()
-      });
-    } else {
-      const localKey = 'saipau19.lockedPeriods_' + (activeMatch || 'default');
-      const current = JSON.parse(localStorage.getItem(localKey) || '[]');
-      if (!current.includes(period)) {
-        current.push(period);
-        localStorage.setItem(localKey, JSON.stringify(current));
-        setLockedPeriods(current);
-      }
-    }
-  }, [activeMatch]);
 
   // Firestore-tilaus (kaikki laukaukset; suodatus tehdään muistissa)
   useEffect(() => {
@@ -178,8 +136,6 @@ export function useShots(matchId = null) {
     removeShot,
     clearShots,
     clearPeriodShots,
-    lockedPeriods,
-    lockPeriod,
     backend: isFirebaseConfigured ? 'Firestore' : 'localStorage',
   }
 }

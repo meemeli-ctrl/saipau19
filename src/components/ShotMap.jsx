@@ -42,13 +42,8 @@ function ShotMarker({ shot }) {
 }
 
 export default function ShotMap({ user, onLogout, match = null, onChangeMatch }) {
-  const { shots, addShot, removeShot, clearShots, clearPeriodShots, lockedPeriods, lockPeriod } = useShots(match?.id ?? null)
+  const { shots, addShot, removeShot, clearShots, clearPeriodShots } = useShots(match?.id ?? null)
   const [period, setPeriod] = useState(1)
-
-  const isLocked = useMemo(() => {
-    if (period === 'all') return false
-    return lockedPeriods.includes(period)
-  }, [period, lockedPeriods])
 
   // Suodatetaan näytettävät laukaukset valitun erän mukaan
   const displayedShots = useMemo(() => {
@@ -82,10 +77,6 @@ export default function ShotMap({ user, onLogout, match = null, onChangeMatch })
 
   const handleAddShot = useCallback(
     (posWithOutcome) => {
-      if (isLocked) {
-        alert('Tämä erä on tallennettu eikä siihen voi enää lisätä laukauksia.')
-        return
-      }
       addShot({
         x: posWithOutcome.x,
         y: posWithOutcome.y,
@@ -95,24 +86,16 @@ export default function ShotMap({ user, onLogout, match = null, onChangeMatch })
         playerName: 'Penkki',
       })
     },
-    [addShot, period, isLocked],
+    [addShot, period],
   )
 
   const handleUndo = useCallback(() => {
-    if (isLocked) {
-      alert('Tämä erä on tallennettu eikä sitä voi enää muokata.')
-      return
-    }
     if (displayedShots.length > 0) {
       removeShot(displayedShots[displayedShots.length - 1].id)
     }
-  }, [displayedShots, removeShot, isLocked])
+  }, [displayedShots, removeShot])
 
   const handleClearPeriod = useCallback(() => {
-    if (isLocked) {
-      alert('Tämä erä on tallennettu eikä sitä voi enää tyhjentää.')
-      return
-    }
     if (displayedShots.length === 0) return
     const desc = period === 'all' ? 'kaikki ottelun laukaukset' : `${period === 'ja' ? 'jatkoajan' : `${period}. erän`} laukaukset`
     if (confirm(`Haluatko varmasti poistaa: ${desc}?`)) {
@@ -122,7 +105,7 @@ export default function ShotMap({ user, onLogout, match = null, onChangeMatch })
         clearPeriodShots(period)
       }
     }
-  }, [displayedShots.length, period, clearShots, clearPeriodShots, isLocked])
+  }, [displayedShots.length, period, clearShots, clearPeriodShots])
 
   // Pikanäppäimet
   useEffect(() => {
@@ -201,19 +184,14 @@ export default function ShotMap({ user, onLogout, match = null, onChangeMatch })
           {PERIOD_LIST.map((p) => {
             const count = countForPeriod(p.id)
             const isSelected = period === p.id
-            const isPeriodLocked = p.id !== 'all' && lockedPeriods.includes(p.id)
             return (
               <button
                 key={p.id}
                 type="button"
-                className={`period-btn${isSelected ? ' period-btn--active' : ''}${isPeriodLocked ? ' period-btn--locked' : ''}`}
+                className={`period-btn${isSelected ? ' period-btn--active' : ''}`}
                 onClick={() => setPeriod(p.id)}
-                title={isPeriodLocked ? `${p.label}: tallennettu ja lukittu` : undefined}
               >
-                <span className="period-btn__title">
-                  {p.label}
-                  {isPeriodLocked && ' 🔒'}
-                </span>
+                <span className="period-btn__title">{p.label}</span>
                 <span className="period-btn__badge">{count}</span>
               </button>
             )
@@ -239,7 +217,7 @@ export default function ShotMap({ user, onLogout, match = null, onChangeMatch })
             type="button"
             className="action-btn action-btn--undo"
             onClick={handleUndo}
-            disabled={displayedShots.length === 0 || isLocked}
+            disabled={displayedShots.length === 0}
             title="Peruuta viimeisin laukaus (Ctrl+Z)"
           >
             ↶ Peruuta ({displayedShots.length})
@@ -248,30 +226,11 @@ export default function ShotMap({ user, onLogout, match = null, onChangeMatch })
             type="button"
             className="action-btn action-btn--clear"
             onClick={handleClearPeriod}
-            disabled={displayedShots.length === 0 || isLocked}
+            disabled={displayedShots.length === 0}
             title="Tyhjennä nykyisen erän laukaukset"
           >
             Tyhjennä erä
           </button>
-          {period !== 'all' && (
-            <button
-              type="button"
-              className={`action-btn action-btn--save ${isLocked ? 'locked' : ''}`}
-              onClick={() => {
-                if (isLocked) {
-                  alert('Tämä erä on jo tallennettu.')
-                  return
-                }
-                if (confirm('Haluatko varmasti tallentaa erän? Tämän jälkeen et voi enää lisätä tai poistaa laukauksia tästä erästä.')) {
-                  lockPeriod(period)
-                }
-              }}
-              disabled={isLocked}
-              title={isLocked ? "Erä on lukittu" : "Tallenna erä (lukitsee erän)"}
-            >
-              {isLocked ? '🔒 Erä tallennettu' : '💾 Tallenna erä'}
-            </button>
-          )}
         </div>
 
         <div className="shotmap-stats">
