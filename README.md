@@ -4,6 +4,11 @@ Moderni React + Vite -sovellus salibandyjoukkueen tueksi. Alkunäkymässä
 valitaan **peli** salibandyn tulospalvelusta, minkä jälkeen avautuu
 **laukaisukartta**, johon merkitään laukaukset kaukalokartalle.
 
+> **Useampi AI-avustin muokkaa tätä repoa (Claude Code, Antigravity, Copilot).**
+> Kaikkien pitää noudattaa tiedostoa [AGENTS.md](AGENTS.md): muokkaus
+> paikallisesti vapaasti, mutta GitHub-push ja Firebase-julkaisu vain
+> erillisestä, nimenomaisesta pyynnöstä.
+
 ## Ominaisuudet
 
 - **Pelin valinta alkunäkymässä**: SaiPan ottelut *U19 Pojat 1. divisioonasta*
