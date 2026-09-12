@@ -31,17 +31,17 @@ html, body, #root {
   /* Syvyyttä antavat hehkut ilman filter:blur() (halpa piirtää, ei rasita
      laitetta) – lasipaneelit saavat kontrastinsa tästä backdrop-filterillä. */
   background:
-    radial-gradient(circle at 12% -8%, rgba(255, 217, 59, 0.22), transparent 42%),
-    radial-gradient(circle at 105% 0%, rgba(56, 189, 248, 0.16), transparent 38%),
-    radial-gradient(circle at 50% 115%, rgba(255, 217, 59, 0.1), transparent 48%),
-    linear-gradient(165deg, #0a0f1f 0%, #0b1a3a 55%, #13275c 100%);
+    radial-gradient(circle at 12% -8%, rgba(255, 233, 0, 0.22), transparent 42%),
+    radial-gradient(circle at 105% 0%, rgba(255, 255, 255, 0.1), transparent 38%),
+    radial-gradient(circle at 50% 115%, rgba(255, 233, 0, 0.1), transparent 48%),
+    linear-gradient(165deg, #000000 0%, #0a0a08 55%, #141410 100%);
 }
 
 /* Lasipaneelien yhteinen pohja: puolikirkas + sumennettu. */
 .shotmap-topbar,
 .shotmap-periodbar,
 .shotmap-bottombar {
-  background: rgba(13, 22, 46, 0.55);
+  background: rgba(0, 0, 0, 0.55);
   backdrop-filter: blur(20px) saturate(160%);
   -webkit-backdrop-filter: blur(20px) saturate(160%);
 }
@@ -52,7 +52,7 @@ html, body, #root {
   .shotmap-topbar,
   .shotmap-periodbar,
   .shotmap-bottombar {
-    background: #0d162e;
+    background: #000000;
   }
 }
 
@@ -75,7 +75,8 @@ html, body, #root {
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.18);
-  color: #ffd93b;
+  color: #ffe900;
+  min-height: 44px;
   padding: 8px 14px;
   border-radius: 10px;
   font-size: 13px;
@@ -86,8 +87,8 @@ html, body, #root {
 }
 
 .shotmap-nav-btn:hover {
-  background: rgba(255, 217, 59, 0.16);
-  border-color: rgba(255, 217, 59, 0.45);
+  background: rgba(255, 233, 0, 0.16);
+  border-color: rgba(255, 233, 0, 0.45);
 }
 
 .shotmap-nav-btn:active {
@@ -111,7 +112,7 @@ html, body, #root {
 }
 
 .shotmap-matchinfo__teams .team-saipa {
-  color: #ffd93b;
+  color: #ffe900;
 }
 
 .shotmap-matchinfo__teams .team-vs {
@@ -150,6 +151,7 @@ html, body, #root {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.18);
   color: rgba(255, 255, 255, 0.75);
+  min-height: 44px;
   padding: 5px 10px;
   border-radius: 999px;
   font-size: 11px;
@@ -181,7 +183,7 @@ html, body, #root {
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.08em;
-  color: #ffd93b;
+  color: #ffe900;
   text-transform: uppercase;
 }
 
@@ -202,6 +204,7 @@ html, body, #root {
   border: 1px solid rgba(255, 255, 255, 0.14);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
   color: rgba(255, 255, 255, 0.85);
+  min-height: 44px;
   padding: 7px 13px;
   border-radius: 20px;
   font-size: 13px;
@@ -221,15 +224,15 @@ html, body, #root {
 }
 
 .period-btn--active {
-  background: #ffd93b;
-  color: #0b1a3a;
-  border-color: #ffd93b;
-  box-shadow: 0 4px 16px rgba(255, 217, 59, 0.4);
+  background: #ffe900;
+  color: #000000;
+  border-color: #ffe900;
+  box-shadow: 0 4px 16px rgba(255, 233, 0, 0.4);
 }
 
 .period-btn--active:hover {
-  background: #ffe066;
-  color: #0b1a3a;
+  background: #fff23d;
+  color: #000000;
 }
 
 /* Tallennettu/lukittu erä erottuu palkista heti, ei vain valittuna */
@@ -248,7 +251,7 @@ html, body, #root {
 }
 
 .period-btn--active .period-btn__badge {
-  background: rgba(11, 26, 58, 0.18);
+  background: rgba(0, 0, 0, 0.18);
 }
 
 /* 3. Kaukaloareena – tarkoituksella täysin umpinainen ja terävä: laukausten
@@ -262,7 +265,7 @@ html, body, #root {
   padding: 10px 14px;
   background:
     radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.35), transparent 55%),
-    linear-gradient(135deg, #ffd93b 0%, #f4b400 100%);
+    linear-gradient(135deg, #ffe900 0%, #e6d200 100%);
   position: relative;
   overflow: hidden;
 }
@@ -288,7 +291,7 @@ html, body, #root {
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
-  filter: drop-shadow(0 18px 34px rgba(11, 26, 58, 0.35)) drop-shadow(0 2px 6px rgba(11, 26, 58, 0.2));
+  filter: drop-shadow(0 18px 34px rgba(0, 0, 0, 0.35)) drop-shadow(0 2px 6px rgba(0, 0, 0, 0.2));
 }
 
 /* 4. Alapalkki */
@@ -316,6 +319,7 @@ html, body, #root {
    laidalta, ei arvailla läpikuultavuuden läpi. */
 .action-btn {
   border: 1px solid transparent;
+  min-height: 44px;
   padding: 9px 16px;
   border-radius: 10px;
   font-size: 13px;
@@ -330,13 +334,13 @@ html, body, #root {
 }
 
 .action-btn--undo {
-  background: #ffd93b;
-  color: #0b1a3a;
-  box-shadow: 0 2px 10px rgba(255, 217, 59, 0.3);
+  background: #ffe900;
+  color: #000000;
+  box-shadow: 0 2px 10px rgba(255, 233, 0, 0.3);
 }
 
 .action-btn--undo:hover:not(:disabled) {
-  background: #ffe37a;
+  background: #fff576;
   transform: translateY(-1px);
 }
 
@@ -379,27 +383,6 @@ html, body, #root {
   box-shadow: none;
 }
 
-/* "Päätä peli" – tietoisesti räikeän erilainen kuin muut toimintopainikkeet
-   ja näkyy VAIN JA-erällä: kaksinkertainen suoja vahinkopainalluksia vastaan. */
-.action-btn--end-game {
-  background-color: #ef4444;
-  color: #fff;
-  box-shadow: 0 2px 10px rgba(239, 68, 68, 0.35);
-}
-
-.action-btn--end-game:hover:not(:disabled) {
-  background-color: #dc2626;
-}
-
-.action-btn--end-game.locked {
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  color: rgba(255, 255, 255, 0.55);
-  border-color: rgba(255, 255, 255, 0.16);
-  opacity: 1;
-  box-shadow: none;
-}
 
 .shotmap-stats {
   display: flex;
@@ -442,7 +425,7 @@ html, body, #root {
 }
 
 .stat-pill--total b {
-  color: #ffd93b;
+  color: #ffe900;
 }
 
 /* Näppäimistöllä/kytkimellä käytettäessä selkeä kohdistusrengas */
@@ -450,7 +433,7 @@ html, body, #root {
 .period-btn:focus-visible,
 .action-btn:focus-visible,
 .shotmap-logout-btn:focus-visible {
-  outline: 2px solid #ffd93b;
+  outline: 2px solid #ffe900;
   outline-offset: 2px;
 }
 
@@ -495,7 +478,7 @@ html, body, #root {
   align-items: flex-start;
   justify-content: center;
   padding: 24px 16px 48px;
-  background: linear-gradient(135deg, #ffd93b 0%, #f4b400 100%);
+  background: linear-gradient(135deg, #ffe900 0%, #e6d200 100%);
 }
 
 .startview__card {
@@ -510,7 +493,7 @@ html, body, #root {
 .startview__head h1 {
   margin: 0;
   font-size: 24px;
-  color: #0b1a3a;
+  color: #000000;
 }
 
 .startview__series {
@@ -521,7 +504,7 @@ html, body, #root {
 
 .startview__lead {
   margin: 10px 0 0;
-  color: #5b6b8c;
+  color: #57544a;
   font-size: 14px;
 }
 
@@ -530,13 +513,13 @@ html, body, #root {
   font-size: 12px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #8a97b3;
+  color: #8a8675;
 }
 
 .startview__note {
   margin: 16px 0 0;
   font-size: 14px;
-  color: #5b6b8c;
+  color: #57544a;
 }
 
 .startview__note--error {
@@ -550,7 +533,7 @@ html, body, #root {
   border: 1px dashed #c9d3e6;
   border-radius: 10px;
   background: transparent;
-  color: #5b6b8c;
+  color: #57544a;
   font-weight: 600;
   cursor: pointer;
 }
@@ -608,7 +591,7 @@ html, body, #root {
   align-items: center;
   gap: 8px;
   font-size: 12px;
-  color: #5b6b8c;
+  color: #57544a;
 }
 
 .match-row__badge {
@@ -628,7 +611,7 @@ html, body, #root {
   gap: 8px;
   font-size: 15px;
   font-weight: 600;
-  color: #0b1a3a;
+  color: #000000;
 }
 
 .match-row__saipa {
@@ -637,13 +620,13 @@ html, body, #root {
 
 .match-row__vs {
   font-size: 13px;
-  color: #8a97b3;
+  color: #8a8675;
   font-weight: 700;
 }
 
 .match-row__venue {
   font-size: 12px;
-  color: #8a97b3;
+  color: #8a8675;
 }
 
 .danger {
@@ -673,7 +656,7 @@ html, body, #root {
   background: #f4f7fc;
   border-radius: 8px;
   font-size: 13px;
-  color: #0b1a3a;
+  color: #000000;
 }
 
 .user-status-bar__name {
@@ -689,7 +672,7 @@ html, body, #root {
   border-radius: 6px;
   font-size: 12px;
   font-weight: 600;
-  color: #5b6b8c;
+  color: #57544a;
   cursor: pointer;
   transition: all 0.15s;
 }
@@ -707,7 +690,7 @@ html, body, #root {
   align-items: center;
   justify-content: center;
   padding: 24px 16px;
-  background: linear-gradient(135deg, #ffd93b 0%, #f4b400 100%);
+  background: linear-gradient(135deg, #ffe900 0%, #e6d200 100%);
 }
 
 .login-card {
@@ -716,7 +699,7 @@ html, body, #root {
   background: #ffffff;
   border-radius: 20px;
   padding: 32px 28px;
-  box-shadow: 0 16px 48px rgba(11, 26, 58, 0.22);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.22);
 }
 
 .login-header {
@@ -726,8 +709,8 @@ html, body, #root {
 
 .login-logo-badge {
   display: inline-block;
-  background: #0b1a3a;
-  color: #ffd93b;
+  background: #000000;
+  color: #ffe900;
   font-size: 14px;
   font-weight: 900;
   letter-spacing: 0.12em;
@@ -740,7 +723,7 @@ html, body, #root {
 .login-header h1 {
   margin: 0;
   font-size: 26px;
-  color: #0b1a3a;
+  color: #000000;
   font-weight: 800;
 }
 
@@ -762,7 +745,7 @@ html, body, #root {
 .login-title {
   margin: 0 0 4px;
   font-size: 18px;
-  color: #0b1a3a;
+  color: #000000;
   font-weight: 700;
 }
 
@@ -789,7 +772,7 @@ html, body, #root {
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #5b6b8c;
+  color: #57544a;
 }
 
 .form-group input {
@@ -800,14 +783,14 @@ html, body, #root {
   border-radius: 10px;
   outline: none;
   background: #fbfcfe;
-  color: #0b1a3a;
+  color: #000000;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .form-group input:focus {
-  border-color: #f4b400;
+  border-color: #e6d200;
   background: #fff;
-  box-shadow: 0 0 0 3px rgba(244, 180, 0, 0.2);
+  box-shadow: 0 0 0 3px rgba(230, 210, 0, 0.2);
 }
 
 .form-group input:disabled {
@@ -819,8 +802,8 @@ html, body, #root {
   margin-top: 8px;
   width: 100%;
   padding: 14px;
-  background: #0b1a3a;
-  color: #ffd93b;
+  background: #000000;
+  color: #ffe900;
   border: none;
   border-radius: 10px;
   font-size: 15px;
@@ -831,7 +814,7 @@ html, body, #root {
 }
 
 .login-submit-btn:hover:not(:disabled) {
-  background: #142854;
+  background: #1a1a1a;
 }
 
 .login-submit-btn:active:not(:disabled) {
@@ -846,14 +829,14 @@ html, body, #root {
 .login-toggle-mode {
   text-align: center;
   font-size: 13px;
-  color: #5b6b8c;
+  color: #57544a;
   margin-top: 4px;
 }
 
 .link-btn {
   background: none;
   border: none;
-  color: #0b1a3a;
+  color: #000000;
   font-weight: 700;
   cursor: pointer;
   text-decoration: underline;
@@ -885,16 +868,25 @@ html, body, #root {
   background: #e2e8f0;
 }
 
+/* "Päätä ottelu" – ainoa peruuttamaton toiminto, siksi räikeän erivärinen kuin
+   muut ja näkyy vain JA-erällä. Koko ja muoto peritään .action-btn:ltä, jotta
+   se istuu alapalkin muiden painikkeiden riviin. */
 .action-btn--end-match {
   background-color: #ef4444;
-  color: white;
-  border: 1px solid #b91c1c;
-  padding: 0.3rem 0.6rem;
-  font-size: 0.8rem;
-  border-radius: 4px;
-  cursor: pointer;
-  margin-right: 15px;
+  color: #fff;
+  border-color: #b91c1c;
+  box-shadow: 0 2px 10px rgba(239, 68, 68, 0.35);
 }
-.action-btn--end-match:hover {
+
+.action-btn--end-match:hover:not(:disabled) {
   background-color: #dc2626;
+}
+
+.action-btn--unlock {
+  background-color: #f97316; /* Orange */
+  color: white;
+  border: 1px solid #c2410c;
+}
+.action-btn--unlock:hover {
+  background-color: #ea580c;
 }

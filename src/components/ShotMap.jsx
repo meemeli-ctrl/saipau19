@@ -14,7 +14,7 @@ const PERIOD_LIST = [
 
 function ShotMarker({ shot }) {
   const outcome = outcomeById(shot.outcome)
-  const common = { stroke: '#0b1a3a', strokeWidth: 1 }
+  const common = { stroke: '#000000', strokeWidth: 1 }
   const pLabel = shot.period === 'ja' ? 'JA' : `${shot.period ?? 1}. erä`
 
   let marker = null
@@ -42,7 +42,7 @@ function ShotMarker({ shot }) {
 }
 
 export default function ShotMap({ user, onLogout, match = null, onChangeMatch }) {
-  const { shots, addShot, removeShot, clearShots, clearPeriodShots, lockedPeriods, lockPeriod, endMatch } = useShots(match?.id ?? null, user)
+  const { shots, addShot, removeShot, clearShots, clearPeriodShots, lockedPeriods, lockPeriod, unlockPeriod, endMatch } = useShots(match?.id ?? null, user)
   const [period, setPeriod] = useState(1)
 
   // "Kaikki"-näkymässä lisätty laukaus kirjautuu 1. erälle (ks. handleAddShot),
@@ -52,12 +52,6 @@ export default function ShotMap({ user, onLogout, match = null, onChangeMatch })
     const effectivePeriod = period === 'all' ? 1 : period
     return lockedPeriods.includes(effectivePeriod)
   }, [period, lockedPeriods])
-
-  // Koko peli on päätetty kun jokainen erä (1., 2., 3. ja JA) on lukittu.
-  const gameEnded = useMemo(
-    () => [1, 2, 3, 'ja'].every((p) => lockedPeriods.includes(p)),
-    [lockedPeriods],
-  )
 
   // Suodatetaan näytettävät laukaukset valitun erän mukaan
   const displayedShots = useMemo(() => {
@@ -92,7 +86,7 @@ export default function ShotMap({ user, onLogout, match = null, onChangeMatch })
   const handleAddShot = useCallback(
     (posWithOutcome) => {
       if (isLocked) {
-        alert('Tämä erä on tallennettu eikä siihen voi enää lisätä laukauksia.')
+        alert('Erä on tallennettu. Avaa lukitus alapalkista jos haluat lisätä laukauksia.')
         return
       }
       addShot({
@@ -109,7 +103,7 @@ export default function ShotMap({ user, onLogout, match = null, onChangeMatch })
 
   const handleUndo = useCallback(() => {
     if (isLocked) {
-      alert('Tämä erä on tallennettu eikä sitä voi enää muokata.')
+      alert('Erä on tallennettu. Avaa lukitus alapalkista jos haluat muokata sitä.')
       return
     }
     if (displayedShots.length > 0) {
@@ -119,7 +113,7 @@ export default function ShotMap({ user, onLogout, match = null, onChangeMatch })
 
   const handleClearPeriod = useCallback(() => {
     if (isLocked) {
-      alert('Tämä erä on tallennettu eikä sitä voi enää tyhjentää.')
+      alert('Erä on tallennettu. Avaa lukitus alapalkista jos haluat tyhjentää sen.')
       return
     }
     if (displayedShots.length === 0) return
@@ -133,22 +127,41 @@ export default function ShotMap({ user, onLogout, match = null, onChangeMatch })
     }
   }, [displayedShots.length, period, clearShots, clearPeriodShots, isLocked])
 
-  // "Päätä peli" näkyy VAIN JA-erällä (ks. renderöinti alla) – näin se ei ole
-  // yhtään muun erän napin vieressä eikä siihen voi osua vahingossa kesken
-  // 1./2./3. erän merkintöjä.
-  const handleEndGame = useCallback(async () => {
-    if (gameEnded) {
-      alert('Peli on jo päätetty.')
+  // Erän tallennus ja lukituksen avaus samassa napissa: lukitus suojaa
+  // vahinkomerkinnöiltä, mutta virheen sattuessa sen saa auki.
+  const handleTogglePeriodLock = useCallback(() => {
+    if (isLocked) {
+      if (confirm('Avataanko erän lukitus? Erään voi sen jälkeen taas lisätä ja poistaa laukauksia.')) {
+        unlockPeriod(period)
+      }
       return
     }
     if (
       confirm(
-        'Haluatko varmasti PÄÄTTÄÄ KOKO PELIN?\n\nTämä lukitsee kaikki erät (1., 2., 3. ja JA) pysyvästi – toimintoa ei voi perua.',
+        'Tallennetaanko erä?\n\nErä lukitaan, eikä siihen voi lisätä laukauksia ennen kuin lukitus avataan.',
       )
     ) {
-      await Promise.all([1, 2, 3, 'ja'].map((p) => lockPeriod(p)))
+      lockPeriod(period)
     }
-  }, [gameEnded, lockPeriod])
+  }, [isLocked, period, lockPeriod, unlockPeriod])
+
+  // "Päätä ottelu" näkyy VAIN JA-erällä (ks. renderöinti alla) – näin siihen ei
+  // voi osua vahingossa kesken 1./2./3. erän merkintöjä. Tekee kaiken kerralla:
+  // lukitsee jokaisen erän ja tallentaa ottelun tiedot talteen.
+  const handleEndMatch = useCallback(async () => {
+    if (!match) return
+    if (
+      !confirm(
+        'Päätetäänkö ottelu?\n\nKaikki erät lukitaan ja ottelun tiedot tallennetaan talteen.',
+      )
+    ) {
+      return
+    }
+    await Promise.all([1, 2, 3, 'ja'].map((p) => lockPeriod(p)))
+    await endMatch(match)
+    alert('Ottelu päätetty ja tiedot tallennettu.')
+    onChangeMatch()
+  }, [match, lockPeriod, endMatch, onChangeMatch])
 
   // Pikanäppäimet
   useEffect(() => {
@@ -202,22 +215,6 @@ export default function ShotMap({ user, onLogout, match = null, onChangeMatch })
         </div>
 
         <div className="shotmap-user-tools">
-          {match && (
-            <button
-              type="button"
-              className="action-btn action-btn--end-match"
-              onClick={async () => {
-                if (confirm('Haluatko varmasti päättää ottelun? Ottelun tiedot tallennetaan ja erät lukitaan.')) {
-                  await endMatch(match);
-                  alert('Ottelu päätetty ja tiedot tallennettu.');
-                  onChangeMatch(); // Palataan takaisin listaukseen
-                }
-              }}
-              title="Päätä ottelu ja tallenna data"
-            >
-              🏁 Päätä ottelu
-            </button>
-          )}
           {user && (
             <span className="shotmap-username" title={`Kirjautunut: ${user.email}`}>
               👤 {user.displayName || user.email?.replace(/@saipau19\.app$/, '')}
@@ -298,35 +295,21 @@ export default function ShotMap({ user, onLogout, match = null, onChangeMatch })
           {period !== 'all' && (
             <button
               type="button"
-              className={`action-btn action-btn--save ${isLocked ? 'locked' : ''}`}
-              onClick={() => {
-                if (isLocked) {
-                  alert('Tämä erä on jo tallennettu.')
-                  return
-                }
-                if (
-                  confirm(
-                    'Haluatko varmasti tallentaa erän? Tämän jälkeen et voi enää lisätä tai poistaa laukauksia tästä erästä.',
-                  )
-                ) {
-                  lockPeriod(period)
-                }
-              }}
-              disabled={isLocked}
-              title={isLocked ? 'Erä on lukittu' : 'Tallenna erä (lukitsee erän)'}
+              className={`action-btn ${isLocked ? 'action-btn--unlock' : 'action-btn--save'}`}
+              onClick={handleTogglePeriodLock}
+              title={isLocked ? 'Avaa erän lukitus' : 'Tallenna erä (lukitsee erän)'}
             >
-              {isLocked ? '🔒 Erä tallennettu' : '💾 Tallenna erä'}
+              {isLocked ? '🔓 Avaa lukitus' : '💾 Tallenna erä'}
             </button>
           )}
-          {period === 'ja' && (
+          {period === 'ja' && match && (
             <button
               type="button"
-              className={`action-btn action-btn--end-game ${gameEnded ? 'locked' : ''}`}
-              onClick={handleEndGame}
-              disabled={gameEnded}
-              title={gameEnded ? 'Peli on päätetty' : 'Päätä koko peli (lukitsee kaikki erät pysyvästi)'}
+              className="action-btn action-btn--end-match"
+              onClick={handleEndMatch}
+              title="Päätä ottelu: lukitsee kaikki erät ja tallentaa tiedot"
             >
-              {gameEnded ? '🏁 Peli päätetty' : '🏁 Päätä peli'}
+              🏁 Päätä ottelu
             </button>
           )}
         </div>

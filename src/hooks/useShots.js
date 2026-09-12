@@ -75,6 +75,25 @@ export function useShots(matchId = null, user = null) {
     })
   }, [activeMatch, user])
 
+  // Lukituksen avaus: jos erä on tallennettu vahingossa kesken pelin, sen
+  // pitää saada auki – muuten koko erä jäisi lukkoon ottelun loppuun asti.
+  const unlockPeriod = useCallback(
+    async (period) => {
+      if (isFirebaseConfigured) {
+        await deleteDoc(
+          doc(db, 'locked_periods', `${activeMatch || 'default'}_${period}_${user?.uid || 'anon'}`),
+        )
+        return
+      }
+      const localKey = 'saipau19.lockedPeriods_' + (activeMatch || 'default')
+      const current = JSON.parse(localStorage.getItem(localKey) ?? '[]')
+      const updated = current.filter((p) => p !== period)
+      localStorage.setItem(localKey, JSON.stringify(updated))
+      setLockedPeriods(updated)
+    },
+    [activeMatch, user],
+  )
+
   const lockPeriod = useCallback(
     async (period) => {
       if (isFirebaseConfigured) {
@@ -198,11 +217,12 @@ export function useShots(matchId = null, user = null) {
       userId: user?.uid || null,
       userEmail: user?.email || null,
       matchInfo: matchInfo || null,
-      shots: allShots.filter((s) => norm(s.matchId) === activeMatch),
+      // Sama joukko kuin käyttäjä näkee näytöllä (omat merkinnät), ei muiden.
+      shots,
       apiData: apiData,
       completedAt: serverTimestamp()
     });
-  }, [activeMatch, allShots, user]);
+  }, [activeMatch, shots, user]);
 
   return {
     shots,
@@ -212,6 +232,7 @@ export function useShots(matchId = null, user = null) {
     clearPeriodShots,
     lockedPeriods,
     lockPeriod,
+    unlockPeriod,
     endMatch,
     backend: isFirebaseConfigured ? 'Firestore' : 'localStorage',
   }
