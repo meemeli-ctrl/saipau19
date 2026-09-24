@@ -428,6 +428,49 @@ html, body, #root {
   color: #ffe900;
 }
 
+/* Kaikki-näkymässä pillerit ovat suodatinnappeja: sama ulkoasu, mutta
+   painettava koko (44 px) ja valittu tila täytetty SaiPan keltaisella. */
+.stat-pill--filter {
+  font: inherit;
+  font-size: 12px;
+  min-height: 44px;
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.stat-pill--filter:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.stat-pill--filter:focus-visible {
+  outline: 2px solid #ffe900;
+  outline-offset: 2px;
+}
+
+.stat-pill--active,
+.stat-pill--active:hover {
+  background: #ffe900;
+  border-color: #ffe900;
+  color: #000000;
+}
+
+.stat-pill--active b {
+  color: #000000;
+}
+
+/* Jonkun toisen päättämä ottelu: toimintonapit korvataan tällä ilmoituksella. */
+.shotmap-readonly {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 233, 0, 0.35);
+  border-radius: 10px;
+  background: rgba(255, 233, 0, 0.08);
+}
+
 /* Näppäimistöllä/kytkimellä käytettäessä selkeä kohdistusrengas */
 .shotmap-nav-btn:focus-visible,
 .period-btn:focus-visible,
@@ -603,6 +646,11 @@ html, body, #root {
   background: #16a34a;
   border-radius: 999px;
   padding: 2px 7px;
+}
+
+.match-row__badge--map {
+  background: #000000;
+  color: #ffe900;
 }
 
 .match-row__teams {

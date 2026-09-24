@@ -1,9 +1,10 @@
 import { useMatches } from '../hooks/useMatches'
+import { useCompletedMatches } from '../hooks/useCompletedMatches'
 import { CATEGORY_NAME } from '../api/tulospalvelu'
 import { formatMatchDate } from '../matchFormat'
 import { TEAM_NAME } from '../data/team'
 
-function MatchRow({ match, highlight, onSelect }) {
+function MatchRow({ match, highlight, hasShotMap, onSelect }) {
   return (
     <button
       type="button"
@@ -13,6 +14,7 @@ function MatchRow({ match, highlight, onSelect }) {
       <span className="match-row__date">
         {formatMatchDate(match.date, match.time)}
         {highlight && <span className="match-row__badge">Seuraava</span>}
+        {hasShotMap && <span className="match-row__badge match-row__badge--map">Laukaisukartta</span>}
       </span>
       <span className="match-row__teams">
         <span className={match.saipaHome ? 'match-row__saipa' : ''}>{match.home}</span>
@@ -32,6 +34,7 @@ function MatchRow({ match, highlight, onSelect }) {
 
 export default function StartView({ user, onLogout, onSelectMatch, onSkip }) {
   const { upcoming, past, next, loading, error, refresh } = useMatches()
+  const completed = useCompletedMatches()
 
   return (
     <div className="startview">
@@ -88,7 +91,12 @@ export default function StartView({ user, onLogout, onSelectMatch, onSkip }) {
             <h2 className="startview__subhead">Pelatut</h2>
             <div className="match-list">
               {past.slice(0, 6).map((m) => (
-                <MatchRow key={m.id} match={m} onSelect={onSelectMatch} />
+                <MatchRow
+                  key={m.id}
+                  match={m}
+                  hasShotMap={completed.has(m.id)}
+                  onSelect={onSelectMatch}
+                />
               ))}
             </div>
           </section>

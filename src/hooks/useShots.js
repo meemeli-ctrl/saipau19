@@ -13,6 +13,7 @@ import {
 } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from '../firebase'
 import { fetchMatchDetails } from '../api/tulospalvelu'
+import { useCompletedMatches } from './useCompletedMatches'
 
 const STORAGE_KEY = 'saipau19.shots'
 
@@ -46,6 +47,21 @@ const norm = (matchId) => matchId || null
 export function sortShots(shots) {
   const key = (s) => s.clientCreatedAt ?? s.createdAt ?? Number.POSITIVE_INFINITY
   return [...shots].sort((a, b) => key(a) - key(b) || String(a.id).localeCompare(String(b.id)))
+}
+
+/**
+ * Mitkä laukaukset näytetään: omat merkinnät aina, ja lisäksi niiden
+ * käyttäjien merkinnät, jotka ovat päättäneet tämän ottelun ("Päätä ottelu").
+ * Päätetty ottelu on siis kaikkien nähtävissä, keskeneräinen vain tekijälleen.
+ * Jokaiseen laukaukseen lisätään `mine`, jotta muiden laukauksia ei voi
+ * vahingossa peruuttaa tai poistaa.
+ */
+export function selectVisibleShots(allShots, matchId, uid, completerIds = []) {
+  const match = norm(matchId)
+  return allShots
+    .filter((s) => norm(s.matchId) === match)
+    .filter((s) => !uid || s.userId === uid || completerIds.includes(s.userId))
+    .map((s) => ({ ...s, mine: !uid || s.userId === uid }))
 }
 
 /**
@@ -155,10 +171,18 @@ export function useShots(matchId = null, user = null) {
     writeLocal(allShots)
   }, [allShots])
 
-  const shots = useMemo(
-    () => allShots.filter((s) => norm(s.matchId) === activeMatch && (!isFirebaseConfigured || !user || s.userId === user.uid)),
-    [allShots, activeMatch, user],
+  const completedMatches = useCompletedMatches()
+  const completedBy = useMemo(
+    () => (activeMatch && completedMatches.get(activeMatch)) || [],
+    [completedMatches, activeMatch],
   )
+
+  const uid = isFirebaseConfigured ? user?.uid ?? null : null
+  const shots = useMemo(
+    () => selectVisibleShots(allShots, activeMatch, uid, completedBy.map((c) => c.userId)),
+    [allShots, activeMatch, uid, completedBy],
+  )
+  const ownShots = useMemo(() => shots.filter((s) => s.mine), [shots])
 
   const addShot = useCallback(
     async (shot) => {
@@ -237,15 +261,16 @@ export function useShots(matchId = null, user = null) {
       userId: user?.uid || null,
       userEmail: user?.email || null,
       matchInfo: matchInfo || null,
-      // Sama joukko kuin käyttäjä näkee näytöllä (omat merkinnät), ei muiden.
-      shots,
+      // Vain omat merkinnät – muiden päättämät ottelut ovat omissa koosteissaan.
+      shots: ownShots,
       apiData: apiData,
       completedAt: serverTimestamp()
     });
-  }, [activeMatch, shots, user]);
+  }, [activeMatch, ownShots, user]);
 
   return {
     shots,
+    completedBy,
     addShot,
     removeShot,
     clearShots,

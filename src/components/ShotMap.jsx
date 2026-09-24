@@ -12,6 +12,15 @@ const PERIOD_LIST = [
   { id: 'all', label: 'Kaikki' },
 ]
 
+// Tilastopillerit. Kaikki-näkymässä ne toimivat myös suodattimena.
+const STAT_PILLS = [
+  { id: 'goal', label: '● Maalit', key: 'goals' },
+  { id: 'save', label: '○ Torjunnat', key: 'saves' },
+  { id: 'miss', label: '× Ohit', key: 'misses' },
+  { id: 'block', label: '▲ Blokit', key: 'blocks' },
+  { id: 'total', label: 'Yht', key: 'total' },
+]
+
 function ShotMarker({ shot }) {
   const outcome = outcomeById(shot.outcome)
   const common = { stroke: '#000000', strokeWidth: 1 }
@@ -42,8 +51,21 @@ function ShotMarker({ shot }) {
 }
 
 export default function ShotMap({ user, onLogout, match = null, onChangeMatch }) {
-  const { shots, addShot, removeShot, clearShots, clearPeriodShots, lockedPeriods, lockPeriod, unlockPeriod, endMatch } = useShots(match?.id ?? null, user)
+  const { shots, completedBy, addShot, removeShot, clearShots, clearPeriodShots, lockedPeriods, lockPeriod, unlockPeriod, endMatch } = useShots(match?.id ?? null, user)
   const [period, setPeriod] = useState(1)
+  // Lopputulossuodatin (Maalit / Torjunnat / Ohit / Blokit / Yht) – vain Kaikki-näkymässä.
+  const [outcomeFilter, setOutcomeFilter] = useState('all')
+
+  const selectPeriod = useCallback((p) => {
+    setPeriod(p)
+    setOutcomeFilter('all')
+  }, [])
+
+  // Jonkun toisen päättämä ottelu: näytetään hänen karttansa, mutta vain katseltavana.
+  const readOnly = completedBy.length > 0 && !completedBy.some((c) => c.userId === user?.uid)
+  const completerNames = completedBy
+    .map((c) => c.userEmail?.replace(/@saipau19\.app$/, '') || 'tuntematon')
+    .join(', ')
 
   // "Kaikki"-näkymässä lisätty laukaus kirjautuu 1. erälle (ks. handleAddShot),
   // joten lukitus tarkistetaan sen todellisen erän mukaan johon merkintä menisi
@@ -58,6 +80,15 @@ export default function ShotMap({ user, onLogout, match = null, onChangeMatch })
     if (period === 'all') return shots
     return shots.filter((s) => (s.period ?? 1) === period)
   }, [shots, period])
+
+  // Kaukalolle piirrettävät: Kaikki-näkymässä lisäksi lopputulossuodatin.
+  const rinkShots = useMemo(() => {
+    if (period !== 'all' || outcomeFilter === 'all') return displayedShots
+    return displayedShots.filter((s) => s.outcome === outcomeFilter)
+  }, [displayedShots, period, outcomeFilter])
+
+  // Peruuta ja Tyhjennä koskevat vain omia merkintöjä, ei muiden päättämiä.
+  const ownDisplayedShots = useMemo(() => displayedShots.filter((s) => s.mine), [displayedShots])
 
   // Laukausmäärä per erä
   const countForPeriod = useCallback(
@@ -85,6 +116,10 @@ export default function ShotMap({ user, onLogout, match = null, onChangeMatch })
 
   const handleAddShot = useCallback(
     (posWithOutcome) => {
+      if (readOnly) {
+        alert('Tämä ottelu on päätetty. Laukaisukartta on vain katseltavana.')
+        return
+      }
       if (isLocked) {
         alert('Erä on tallennettu. Avaa lukitus alapalkista jos haluat lisätä laukauksia.')
         return
@@ -98,7 +133,7 @@ export default function ShotMap({ user, onLogout, match = null, onChangeMatch })
         playerName: 'Penkki',
       })
     },
-    [addShot, period, isLocked],
+    [addShot, period, isLocked, readOnly],
   )
 
   const handleUndo = useCallback(() => {
@@ -106,17 +141,17 @@ export default function ShotMap({ user, onLogout, match = null, onChangeMatch })
       alert('Erä on tallennettu. Avaa lukitus alapalkista jos haluat muokata sitä.')
       return
     }
-    if (displayedShots.length > 0) {
-      removeShot(displayedShots[displayedShots.length - 1].id)
+    if (ownDisplayedShots.length > 0) {
+      removeShot(ownDisplayedShots[ownDisplayedShots.length - 1].id)
     }
-  }, [displayedShots, removeShot, isLocked])
+  }, [ownDisplayedShots, removeShot, isLocked])
 
   const handleClearPeriod = useCallback(() => {
     if (isLocked) {
       alert('Erä on tallennettu. Avaa lukitus alapalkista jos haluat tyhjentää sen.')
       return
     }
-    if (displayedShots.length === 0) return
+    if (ownDisplayedShots.length === 0) return
     const desc = period === 'all' ? 'kaikki ottelun laukaukset' : `${period === 'ja' ? 'jatkoajan' : `${period}. erän`} laukaukset`
     if (confirm(`Haluatko varmasti poistaa: ${desc}?`)) {
       if (period === 'all') {
@@ -125,7 +160,7 @@ export default function ShotMap({ user, onLogout, match = null, onChangeMatch })
         clearPeriodShots(period)
       }
     }
-  }, [displayedShots.length, period, clearShots, clearPeriodShots, isLocked])
+  }, [ownDisplayedShots.length, period, clearShots, clearPeriodShots, isLocked])
 
   // Erän tallennus ja lukituksen avaus samassa napissa: lukitus suojaa
   // vahinkomerkinnöiltä, mutta virheen sattuessa sen saa auki.
@@ -170,16 +205,16 @@ export default function ShotMap({ user, onLogout, match = null, onChangeMatch })
         e.preventDefault()
         handleUndo()
       } else if (e.key === '1') {
-        setPeriod(1)
+        selectPeriod(1)
       } else if (e.key === '2') {
-        setPeriod(2)
+        selectPeriod(2)
       } else if (e.key === '3') {
-        setPeriod(3)
+        selectPeriod(3)
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handleUndo])
+  }, [handleUndo, selectPeriod])
 
   return (
     <div className="shotmap-screen">
@@ -246,7 +281,7 @@ export default function ShotMap({ user, onLogout, match = null, onChangeMatch })
                 key={p.id}
                 type="button"
                 className={`period-btn${isSelected ? ' period-btn--active' : ''}${isPeriodLocked ? ' period-btn--locked' : ''}`}
-                onClick={() => setPeriod(p.id)}
+                onClick={() => selectPeriod(p.id)}
                 title={isPeriodLocked ? `${p.label}: tallennettu ja lukittu` : undefined}
               >
                 <span className="period-btn__title">
@@ -264,7 +299,7 @@ export default function ShotMap({ user, onLogout, match = null, onChangeMatch })
       <main className="shotmap-arena">
         <div className="shotmap-rink-wrapper">
           <Rink
-            shots={displayedShots}
+            shots={rinkShots}
             onAddShot={handleAddShot}
             renderShot={(shot) => <ShotMarker shot={shot} />}
           />
@@ -273,21 +308,26 @@ export default function ShotMap({ user, onLogout, match = null, onChangeMatch })
 
       {/* 4. ALAPALKKI: Toiminnot ja suorat erätilastot */}
       <footer className="shotmap-bottombar">
+        {readOnly ? (
+          <div className="shotmap-readonly" role="status">
+            👁 Päätetty ottelu · merkinnyt {completerNames} · vain katselu
+          </div>
+        ) : (
         <div className="shotmap-bottombar__actions">
           <button
             type="button"
             className="action-btn action-btn--undo"
             onClick={handleUndo}
-            disabled={displayedShots.length === 0 || isLocked}
+            disabled={ownDisplayedShots.length === 0 || isLocked}
             title="Peruuta viimeisin laukaus (Ctrl+Z)"
           >
-            ↶ Peruuta ({displayedShots.length})
+            ↶ Peruuta ({ownDisplayedShots.length})
           </button>
           <button
             type="button"
             className="action-btn action-btn--clear"
             onClick={handleClearPeriod}
-            disabled={displayedShots.length === 0 || isLocked}
+            disabled={ownDisplayedShots.length === 0 || isLocked}
             title="Tyhjennä nykyisen erän laukaukset"
           >
             Tyhjennä erä
@@ -313,13 +353,27 @@ export default function ShotMap({ user, onLogout, match = null, onChangeMatch })
             </button>
           )}
         </div>
+        )}
 
-        <div className="shotmap-stats">
-          <span className="stat-pill stat-pill--goal">● Maalit: <b>{stats.goals}</b></span>
-          <span className="stat-pill stat-pill--save">○ Torjunnat: <b>{stats.saves}</b></span>
-          <span className="stat-pill stat-pill--miss">× Ohit: <b>{stats.misses}</b></span>
-          <span className="stat-pill stat-pill--block">▲ Blokit: <b>{stats.blocks}</b></span>
-          <span className="stat-pill stat-pill--total">Yht: <b>{stats.total}</b></span>
+        <div className="shotmap-stats" role={period === 'all' ? 'group' : undefined} aria-label={period === 'all' ? 'Näytä kaukalolla' : undefined}>
+          {STAT_PILLS.map(({ id, label, key }) =>
+            period === 'all' ? (
+              <button
+                key={id}
+                type="button"
+                className={`stat-pill stat-pill--${id} stat-pill--filter${outcomeFilter === (id === 'total' ? 'all' : id) ? ' stat-pill--active' : ''}`}
+                aria-pressed={outcomeFilter === (id === 'total' ? 'all' : id)}
+                onClick={() => setOutcomeFilter(id === 'total' ? 'all' : id)}
+                title={id === 'total' ? 'Näytä kaikki laukaukset' : `Näytä vain: ${label.toLowerCase()}`}
+              >
+                {label}: <b>{stats[key]}</b>
+              </button>
+            ) : (
+              <span key={id} className={`stat-pill stat-pill--${id}`}>
+                {label}: <b>{stats[key]}</b>
+              </span>
+            ),
+          )}
         </div>
       </footer>
     </div>
