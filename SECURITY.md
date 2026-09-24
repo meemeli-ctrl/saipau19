@@ -1,21 +1,29 @@
-# Security Policy
+# Tietoturva
 
-## Supported Versions
+## Tuetut versiot
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
+Vain `main`-haara ja tuotannossa oleva https://saipau19.web.app.
+Vanhoja versioita ei ylläpidetä.
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 5.1.x   | :white_check_mark: |
-| 5.0.x   | :x:                |
-| 4.0.x   | :white_check_mark: |
-| < 4.0   | :x:                |
+## Haavoittuvuudesta ilmoittaminen
 
-## Reporting a Vulnerability
+Älä avaa julkista issueta. Käytä GitHubin yksityistä ilmoitusta:
+repo → **Security** → **Report a vulnerability**.
 
-Use this section to tell people how to report a vulnerability.
+Jos se ei ole käytettävissä, ota yhteyttä: meemeli.kahkonen@gmail.com
 
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+Kerro mitä löysit, miten sen voi toistaa ja mitä sillä voi tehdä.
+Vastaan viikon sisällä. Tämä on vapaaehtoisprojekti, joten korjauksen
+aikataulu riippuu löydöksen vakavuudesta.
+
+## Piiriin kuuluu
+
+- Sovelluksen koodi tässä repossa
+- Firestore-säännöt (`firestore.rules`) ja kirjautuminen
+
+## Piiriin ei kuulu
+
+- Salibandyliiton tulospalvelu (Torneopal) ja Firebase itse
+- Koodissa näkyvät julkiset avaimet (Firebasen selainkonfiguraatio ja
+  tulospalvelun lukuavain). Ne ovat tarkoituksella julkisia: pääsy dataan
+  on rajattu Firestore-säännöillä ja kirjautumisella, ei avaimilla.

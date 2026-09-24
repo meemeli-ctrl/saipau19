@@ -251,20 +251,18 @@ Salaisuudet: `.env` (Firebase-avaimet) ja `ohje.md` (tunnukset) ovat
 
 Järjestetty vakavuuden mukaan. Nämä ovat hyviä seuraavia tehtäviä.
 
-1. **Tietoturva: tilin luonti on yhä auki.** Firestore-säännöt rajaavat datan
-   sallittuihin sähköposteihin, joten vieras ei näe eikä kirjoita mitään. Mutta
-   Firebase Auth sallii yhä uusien tilien luonnin (Google luo tilin automaattisesti).
-   Vieras pääsee kirjautumaan, näkee tyhjän sovelluksen ja virheitä. Korjaus:
-   konsoli → Authentication → Settings → User actions → rekisteröityminen pois,
-   ja selaimeen selkeä "ei pääsyä" -viesti.
+1. **Tietoturva – kunnossa (24.9.).** Uusien tilien luonti on estetty Firebase
+   Authissa, ja Firestore-säännöt päästävät dataan vain sallitut tilit. Repo on
+   julkinen, joten henkilökohtaiset osoitteet ovat säännöissä uid:nä, eivät
+   sähköpostina. Julkinen yhteysosoite: meemeli.kahkonen@gmail.com.
 2. **CI on rikki joka pushilla.** `.github/workflows/node.js.yml` ajaa `npm test`,
    mutta testiskriptiä ei ole. Lisäksi Node 18 on matriisissa, vaikka Vite 8
    vaatii uudemman Noden.
 3. **Ei yhtään testiä.** Kriittisimmät testattavat: vetoeleen suunnantunnistus ja
    koordinaattimuunnos (`Rink.jsx`), erälukituksen logiikka (`useShots.js`).
-4. **Käyttäjät:** Authissa on kaksi tiliä, `matti.kaehkoenen@gmail.com` (Google)
-   ja `veska@gg.wp` (salasana). Sama lista on `firestore.rules`:ssa – pidettävä
-   synkassa.
+4. **Käyttäjät:** sallitut tilit on lueteltu `firestore.rules`:ssa (uid- tai
+   sähköpostilista). Koska uusien tilien luonti on estetty, uusi käyttäjä pitää
+   sekä luoda Firebase Authiin konsolista että lisätä sääntöihin.
 5. **Koko `shots`-kokoelma luetaan aina.** Pitäisi kysyä Firestoresta suoraan
    `where('matchId','==',…)` ja `where('userId','==',…)`. Myös `clearShots`
    hakee kaiken ennen poistoa.

@@ -5,12 +5,19 @@ service cloud.firestore {
     // Pelkkä kirjautuminen ei riitä: Google-kirjautuminen luo tilin kenelle
     // tahansa. Vain tällä listalla olevat tilit pääsevät dataan käsiksi.
     // Uuden käyttäjän lisääminen = lisää sähköposti tähän ja julkaise säännöt.
+    // Tämä tiedosto on julkisessa repossa: henkilökohtaiset osoitteet ovat
+    // uid-listassa (uid ei kerro kenestä on kyse), julkiset osoitteet
+    // sähköpostilistassa.
     function isAllowedUser() {
-      return request.auth != null
-        && request.auth.token.email in [
-          'matti.kaehkoenen@gmail.com',
+      return request.auth != null && (
+        request.auth.uid in [
+          'Gj6mIjvRyEM5wRhitG1Qlubsems2'
+        ]
+        || request.auth.token.email in [
+          'meemeli.kahkonen@gmail.com',
           'veska@gg.wp'
-        ];
+        ]
+      );
     }
 
     match /shots/{shotId} {
