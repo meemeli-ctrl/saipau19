@@ -2,7 +2,7 @@
 
 Tämä dokumentti kuvaa miten sovellus toimii ja miten se on rakennettu, jotta
 seuraavat kehitystehtävät voi suunnitella (esim. Geminissä) ja antaa AI-koodaus-
-avustimelle tarkka, rajattu tehtävä. Tila: 24.9.2026, commit `2d865e0`.
+avustimelle tarkka, rajattu tehtävä. Tila: 24.9.2026, commit `b5f381b`.
 
 ---
 
@@ -29,6 +29,10 @@ kaukalokartalle puhelimella tai tabletilla.
 5. **Erän tallennus** – lukitsee erän (ei lisäyksiä/poistoja). Lukituksen voi avata.
 6. **Päätä ottelu** – näkyy vain JA-erässä. Lukitsee kaikki erät ja tallentaa
    ottelun koosteen (laukaukset + tulospalvelun ottelutiedot) talteen.
+7. **Jaettu kartta** – päätetyn ottelun laukaisukartta näkyy kaikille käyttäjille
+   (muille vain katseltavana). Pelatut-listassa merkki "Laukaisukartta".
+8. **Suodatin** – Kaikki-näkymässä Maalit / Torjunnat / Ohit / Blokit / Yht ovat
+   painettavia ja rajaavat kaukalolla näkyvät merkit. Erä-näkymissä pelkkiä lukuja.
 
 ---
 
@@ -40,12 +44,14 @@ kaukalokartalle puhelimella tai tabletilla.
 | Build | Vite 8 |
 | Tyylit | Yksi `src/App.css` (glassmorphism), ei CSS-kirjastoa |
 | Kaukalo | Käsin kirjoitettu SVG (`Rink.jsx`) |
-| Tietokanta | Firebase Firestore, pysyvä IndexedDB-offline-välimuisti |
+| Tietokanta | Firebase Firestore (Blaze-taso), pysyvä IndexedDB-offline-välimuisti |
 | Kirjautuminen | Firebase Authentication |
 | Julkaisu | Firebase Hosting → https://saipau19.web.app |
 | Ottelutiedot | Torneopal / Taso REST API (salibandyn tulospalvelu) |
 | Lint | oxlint (`npm run lint`) |
-| Testit | **ei yhtään** (ks. kohta 9) |
+| Testit | Vitest, 23 testiä (`npm test`) |
+| CI | GitHub Actions: lint + testit + build jokaisella pushilla (Node 22, 24) |
+| Varmuuskopiot | Firebase: päivittäin (7 pv) ja sunnuntaisin (14 vk); lisäksi `npm run backup` |
 
 Jos `.env` puuttuu (ei Firebase-avaimia), sovellus toimii **paikallisessa tilassa**
 ja tallentaa kaiken selaimen localStorageen. Tuotannossa Firebase on aina päällä.
@@ -66,12 +72,15 @@ src/
 │   └── tulospalvelu.js   Torneopal-rajapinta: ottelut, ottelun tiedot
 ├── hooks/
 │   ├── useMatches.js     Ottelulista + 10 min localStorage-välimuisti
-│   └── useShots.js       Laukaukset, erälukitukset, ottelun päättäminen
+│   ├── useShots.js       Laukaukset, erälukitukset, ottelun päättäminen,
+│   │                     näkyvyys (selectVisibleShots) ja järjestys (sortShots)
+│   └── useCompletedMatches.js  Kuka on päättänyt minkä ottelun
 ├── components/
 │   ├── LoginView.jsx     Kirjautumislomake
-│   ├── StartView.jsx     Pelin valinta
+│   ├── StartView.jsx     Pelin valinta (+ "Laukaisukartta"-merkki)
 │   ├── ShotMap.jsx       Päänäkymä: ylä-, erä- ja alapalkki + kaukalo
-│   └── Rink.jsx          SVG-kaukalo ja vetoeleen tunnistus
+│   ├── Rink.jsx          SVG-kaukalo ja vetoeleen tunnistus
+│   └── resolveOutcome.js Vedon suunta → lopputulos (puhdas funktio)
 └── data/
     └── team.js           Joukkueen nimi, lopputulosten värit/nimet
 
@@ -79,9 +88,11 @@ firebase.json             Hosting (dist/) + Firestore-sääntöjen sijainti
 firestore.rules           Tietokannan käyttöoikeudet
 AGENTS.md / CLAUDE.md     AI-avustimien työskentelysäännöt (ks. kohta 7)
 .github/workflows/        GitHub Actions CI
+scripts/                  Firestoren varmuuskopio ja palautus (npm run backup/restore)
+src/**/*.test.js          Testit testattavan tiedoston vieressä
 ```
 
-Koko lähdekoodi on ≈1 450 riviä. Pieni sovellus – yksi tehtävä kerrallaan on
+Koko lähdekoodi on ≈1 900 riviä testeineen. Pieni sovellus – yksi tehtävä kerrallaan on
 realistista kuvata tarkasti.
 
 ---
@@ -110,6 +121,8 @@ muuten                    → ShotMap     (laukaisukartta)
 ├ Kaukalo:     Rink.jsx
 └ Alapalkki:   Peruuta │ Tyhjennä erä │ Tallenna erä / Avaa lukitus │ [JA:] Päätä ottelu
                + tilastot: Maalit, Torjunnat, Ohit, Blokit, Yht
+                 (Kaikki-näkymässä painettavia suodattimia)
+               Toisen päättämä ottelu: napit korvautuvat tekstillä "vain katselu"
 ```
 
 Pikanäppäimet: `Ctrl/Cmd+Z` peruuta, `1`/`2`/`3` vaihda erää.
@@ -130,7 +143,8 @@ Pikanäppäimet: `Ctrl/Cmd+Z` peruuta, `1`/`2`/`3` vaihda erää.
   173 px. Älä muuta tätä.
 - Pointer Events + `setPointerCapture` → veto saa päättyä kaukalon ulkopuolelle.
 - Veto alle 30 px ohitetaan. Merkki piirtyy **vedon alkupisteeseen**.
-- Suunta: `atan2`-kulma neljään 90°:n sektoriin.
+- Suunta: `atan2`-kulma neljään 90°:n sektoriin, tiedostossa `resolveOutcome.js`
+  (testattu, myös tarkat 45°:n rajat).
 
 ---
 
@@ -161,7 +175,8 @@ Avain on sama julkinen lukuavain jota virallinen tulospalvelu käyttää selaime
   matchId: '938971' | null,    // null = "ilman peliä"
   userId, userEmail,           // kuka merkitsi
   playerNumber: null, playerName: 'Penkki',   // ei vielä käytössä
-  createdAt: serverTimestamp }
+  clientCreatedAt: 1790...,    // laitteen kello merkintähetkellä – JÄRJESTYS
+  createdAt: serverTimestamp } // syntyy vasta kun laukaus ehtii pilveen
 ```
 
 **`locked_periods`** – id: `{matchId|default}_{period}_{uid}`
@@ -178,19 +193,28 @@ Avain on sama julkinen lukuavain jota virallinen tulospalvelu käyttää selaime
 
 ### 6.3 Tärkeät datasäännöt
 
-- **Kaikki on käyttäjäkohtaista.** Jokainen valmentaja näkee, lukitsee ja
-  tyhjentää vain omat merkintänsä. Suodatus tehdään selaimessa (`userId === user.uid`).
+- **Merkinnät ovat käyttäjäkohtaisia, kunnes ottelu päätetään.** Keskeneräisen
+  ottelun näkee vain merkitsijä. Kun joku painaa "Päätä ottelu", hänen
+  laukauksensa näkyvät kaikille (`selectVisibleShots`); muut eivät voi muokata
+  niitä. Peruuta ja Tyhjennä koskevat aina vain omia (`mine`-kenttä).
+- **Järjestys = `clientCreatedAt`.** Hallissa ei ole verkkoa: 12.9. ottelun kaikki
+  68 laukausta saivat saman palvelinajan synkronoinnissa. Siksi järjestys ja
+  Peruuta perustuvat laitteen kelloon (`sortShots`), ei `createdAt`:iin.
 - **Hook lukee koko `shots`-kokoelman** ja suodattaa muistissa. Toimii nyt, mutta
   hidastuu kun dataa kertyy satoja otteluita (ks. kohta 9).
 - Offline: `persistentLocalCache` – synkronoitu data säilyy verkkokatkoksessa ja
   sivun uudelleenlatauksessa, kirjoitukset jonottuvat kunnes yhteys palaa.
-- Tietokanta tyhjennettiin 12.9.2026 (kaikki oli testidataa).
+- **Tietokannassa on oikeaa dataa:** 12.9. SaiPa–Welhot (veska, 68 laukausta,
+  päätetty). Älä koskaan tyhjennä kokoelmia. Poista vain yksittäisiä,
+  käyttäjän vahvistamia dokumentteja, ja katso aina niiden päivämäärä ensin.
 
 ### 6.4 Käyttöoikeudet (`firestore.rules`)
 
-Kaikkiin kolmeen kokoelmaan: luku ja kirjoitus sallittu **vain sallittujen
-sähköpostien listalla oleville** (`isAllowedUser()`). Uusi käyttäjä lisätään
-kirjoittamalla sähköposti listaan ja julkaisemalla säännöt.
+Kaikkiin kolmeen kokoelmaan: luku ja kirjoitus sallittu **vain sallituille
+tileille** (`isAllowedUser()`): uid-lista henkilökohtaisille osoitteille (repo on
+julkinen) ja sähköpostilista muille. Uusien tilien luonti on estetty Firebase
+Authissa, joten uusi käyttäjä pitää **sekä** luoda konsolista **että** lisätä
+sääntöihin, ja säännöt julkaista.
 
 ---
 
@@ -220,15 +244,24 @@ ja commit heti kun jokin toimii.**
 
 ```bash
 npm run dev -- --host          # kehityspalvelin, näkyy myös puhelimelle samassa wifissä
+npm test                       # testit (aja ennen pushia)
 npm run build                  # tuotantobuild dist/-kansioon
 npm run lint                   # oxlint
+npm run backup                 # Firestore-varmuuskopio ~/saipau19-varmuuskopio/
 git status / git diff          # mitä on muuttunut viimeisen commitin jälkeen
 git add -A && git commit -m "…" && git push origin main
 npx firebase-tools deploy --only hosting,firestore:rules
 ```
 
-Salaisuudet: `.env` (Firebase-avaimet) ja `ohje.md` (tunnukset) ovat
-`.gitignore`:ssa – eivät koskaan GitHubiin.
+Salaisuudet: `.env` (Firebase-avaimet) ja `ohje.md` (käyttöohje) ovat
+`.gitignore`:ssa – eivät koskaan GitHubiin. Samoin varmuuskopiot (repon ulkopuolella).
+
+⚠️ **Paikallinen kehitysversio käyttää tuotannon tietokantaa** (`.env` osoittaa
+oikeaan Firebaseen). Paikallinen testimerkintä näkyy tuotannossa. Erillistä
+testitietokantaa (Firebase-emulaattoria) ei ole vielä pystytetty.
+
+Vihreä rasti GitHubissa commitin vieressä = CI:n lint, testit ja build menivät
+läpi. Julkaise Firebaseen vasta sen jälkeen.
 
 ---
 
@@ -251,29 +284,28 @@ Salaisuudet: `.env` (Firebase-avaimet) ja `ohje.md` (tunnukset) ovat
 
 Järjestetty vakavuuden mukaan. Nämä ovat hyviä seuraavia tehtäviä.
 
-1. **Tietoturva – kunnossa (24.9.).** Uusien tilien luonti on estetty Firebase
-   Authissa, ja Firestore-säännöt päästävät dataan vain sallitut tilit. Repo on
-   julkinen, joten henkilökohtaiset osoitteet ovat säännöissä uid:nä, eivät
-   sähköpostina. Julkinen yhteysosoite: meemeli.kahkonen@gmail.com.
-2. **CI on rikki joka pushilla.** `.github/workflows/node.js.yml` ajaa `npm test`,
-   mutta testiskriptiä ei ole. Lisäksi Node 18 on matriisissa, vaikka Vite 8
-   vaatii uudemman Noden.
-3. **Ei yhtään testiä.** Kriittisimmät testattavat: vetoeleen suunnantunnistus ja
-   koordinaattimuunnos (`Rink.jsx`), erälukituksen logiikka (`useShots.js`).
-4. **Käyttäjät:** sallitut tilit on lueteltu `firestore.rules`:ssa (uid- tai
-   sähköpostilista). Koska uusien tilien luonti on estetty, uusi käyttäjä pitää
-   sekä luoda Firebase Authiin konsolista että lisätä sääntöihin.
-5. **Koko `shots`-kokoelma luetaan aina.** Pitäisi kysyä Firestoresta suoraan
-   `where('matchId','==',…)` ja `where('userId','==',…)`. Myös `clearShots`
-   hakee kaiken ennen poistoa.
-6. **Pelaajatieto puuttuu.** `playerNumber`/`playerName` ovat kentissä, mutta
+1. **Paikallinen testaus osuu tuotantodataan.** Firebase-emulaattori (erillinen
+   testitietokanta koneella) puuttuu. Vaatii Javan.
+2. **Koko `shots`-kokoelma luetaan aina.** Pitäisi kysyä Firestoresta suoraan
+   `where('matchId','==',…)`. Myös `clearShots` hakee kaiken ennen poistoa.
+   Toimii nyt, hidastuu kun otteluita kertyy kymmeniä.
+3. **Kaksi päättäjää samalle ottelulle** → katsoja näkee molempien merkinnät
+   päällekkäin ja tilastot tuplaantuvat.
+4. **Peruuta ei noudata suodatinta.** Kaikki-näkymässä, kun esim. Maalit on
+   valittuna, Peruuta poistaa silti viimeisimmän laukauksen lopputuloksesta
+   riippumatta.
+5. **Pelaajatieto puuttuu.** `playerNumber`/`playerName` ovat kentissä, mutta
    kaikki merkinnät ovat "Penkki". `team.js`:ssä on paikkamerkkipelaajat.
-7. **Valmentajanäkymä puuttuu.** `completed_matches` tallentuu, mutta mikään ei
-   vielä lue tai näytä sitä.
-8. **`SECURITY.md`** on GitHubin pohja muuttamattomana (väärät versionumerot).
-9. **JS-paketti 838 kB** – Firebase on iso. Koodin pilkkominen auttaisi
+6. **Valmentajanäkymä/tilastot puuttuvat.** `completed_matches` tallentuu, mutta
+   sitä ei vielä koosteta (esim. kausi yhteensä, laukauskartta usealta pelistä).
+   Virallinen tulos (`apiData`) olisi hyvä näyttää vertailuksi: 12.9. merkittiin
+   6 maalia, virallinen tulos oli 7.
+7. **JS-paketti ≈840 kB** – Firebase on iso. Koodin pilkkominen auttaisi
    ensilatausta huonolla yhteydellä.
-10. Yksi harmiton lint-varoitus `useShots.js:59` (setState effectissä).
+8. Yksi harmiton lint-varoitus `useShots.js` (setState effectissä).
+
+**Ratkaistu 24.9.:** tietoturva (vain sallitut tilit, tilien luonti estetty),
+CI ja testit, SECURITY.md, laukausten järjestys offline-tilassa, varmuuskopiot.
 
 ---
 
@@ -301,7 +333,9 @@ Vinkit:
 - **Kerro mitä ei saa muuttaa.** Erityisesti kaukalon koordinaattimuunnos,
   käyttäjäkohtainen datamalli ja julkaisusäännöt.
 - **Pyydä todennus**: "testaa selaimessa ja näytä kuva" on tuottanut luotettavimmat
-  tulokset.
+  tulokset. Pyydä myös **testit** uudelle logiikalle – CI ajaa ne jokaisella pushilla.
+- **Muista offline.** Hallissa ei ole verkkoa. Jokainen uusi ominaisuus pitää
+  toimia ilman yhteyttä ja synkronoitua myöhemmin.
 - **Datamuutos = tietokantamuutos.** Jos uusi ominaisuus lisää kenttiä tai
   kokoelmia, mainitse että myös `firestore.rules` pitää päivittää ja julkaista –
   muuten ominaisuus epäonnistuu tuotannossa äänettömästi (näin kävi kerran).
