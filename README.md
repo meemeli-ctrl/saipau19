@@ -50,7 +50,15 @@ npm run dev -- --host   # näkyy myös puhelimelle samassa wifissä
 npm test                # testit (Vitest)
 npm run lint            # oxlint
 npm run build           # tuotantobuild dist/-kansioon
+npm run backup          # Firestore-varmuuskopio ~/saipau19-varmuuskopio/-kansioon
+npm run restore -- <tiedosto>              # näyttää mitä palautettaisiin
+npm run restore -- <tiedosto> --vahvista   # palauttaa oikeasti
 ```
+
+Varmuuskopio- ja palautuskomennot vaativat, että Firebase CLI on kirjautunut
+(`npx firebase-tools login`). Varmuuskopiot tallentuvat repon ulkopuolelle,
+koska niissä on käyttäjien sähköpostiosoitteita. Palautus ei poista uudempia
+merkintöjä, se vain kirjoittaa varmuuskopion dokumentit takaisin.
 
 Sovellus avautuu osoitteeseen http://localhost:5173. GitHub Actions ajaa lintin,
 testit ja buildin jokaisella pushilla.
