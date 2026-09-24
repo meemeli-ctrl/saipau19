@@ -5,7 +5,6 @@ import {
   deleteDoc,
   doc,
   onSnapshot,
-  orderBy,
   query,
   serverTimestamp,
   writeBatch,
@@ -36,6 +35,18 @@ function writeLocal(shots) {
 // Sama arvo eri kirjoitusasuille (null / undefined / "") jotta "ilman peliä"
 // -laukaukset päätyvät samaan koriin.
 const norm = (matchId) => matchId || null
+
+/**
+ * Laukausten järjestys merkintähetken mukaan. Käyttää laitteen omaa kelloa
+ * (clientCreatedAt), koska palvelimen aikaleima syntyy vasta kun laukaus ehtii
+ * pilveen: hallissa ilman verkkoa koko ottelu saa saman aikaleiman, ja
+ * "viimeisin laukaus" (Peruuta-nappi) olisi satunnainen. Vanhoille laukauksille
+ * ilman clientCreatedAt-kenttää käytetään palvelimen aikaleimaa.
+ */
+export function sortShots(shots) {
+  const key = (s) => s.clientCreatedAt ?? s.createdAt ?? Number.POSITIVE_INFINITY
+  return [...shots].sort((a, b) => key(a) - key(b) || String(a.id).localeCompare(String(b.id)))
+}
 
 /**
  * Laukausten tila valitulle ottelulle. Käyttää Firestorea jos konfiguroitu,
@@ -119,18 +130,21 @@ export function useShots(matchId = null, user = null) {
   // Firestore-tilaus (kaikki laukaukset; suodatus tehdään muistissa)
   useEffect(() => {
     if (!isFirebaseConfigured) return
-    const q = query(collection(db, 'shots'), orderBy('createdAt', 'asc'))
+    const q = query(collection(db, 'shots'))
     return onSnapshot(q, (snap) => {
       setAllShots(
-        snap.docs.map((d) => {
-          const data = d.data()
-          return {
-            id: d.id,
-            ...data,
-            matchId: norm(data.matchId),
-            createdAt: data.createdAt?.toMillis?.() ?? data.createdAt ?? Date.now(),
-          }
-        }),
+        sortShots(
+          snap.docs.map((d) => {
+            const data = d.data()
+            return {
+              id: d.id,
+              ...data,
+              matchId: norm(data.matchId),
+              // null kun laukaus odottaa vielä pilveen pääsyä (offline)
+              createdAt: data.createdAt?.toMillis?.() ?? null,
+            }
+          }),
+        ),
       )
     })
   }, [])
@@ -148,14 +162,20 @@ export function useShots(matchId = null, user = null) {
 
   const addShot = useCallback(
     async (shot) => {
-      const withMatch = { ...shot, matchId: activeMatch, userId: user?.uid || null, userEmail: user?.email || null }
+      const withMatch = {
+        ...shot,
+        matchId: activeMatch,
+        userId: user?.uid || null,
+        userEmail: user?.email || null,
+        clientCreatedAt: Date.now(),
+      }
       if (isFirebaseConfigured) {
         await addDoc(collection(db, 'shots'), { ...withMatch, createdAt: serverTimestamp() })
         return
       }
       setAllShots((prev) => [
         ...prev,
-        { ...withMatch, id: crypto.randomUUID(), createdAt: Date.now() },
+        { ...withMatch, id: crypto.randomUUID(), createdAt: withMatch.clientCreatedAt },
       ])
     },
     [activeMatch, user],

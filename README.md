@@ -9,6 +9,9 @@ valitaan **peli** salibandyn tulospalvelusta, minkä jälkeen avautuu
 > paikallisesti vapaasti, mutta GitHub-push ja Firebase-julkaisu vain
 > erillisestä, nimenomaisesta pyynnöstä.
 
+Tarkempi kuvaus rakenteesta, datamallista ja kehitysputkesta:
+[ARKKITEHTUURI.md](ARKKITEHTUURI.md).
+
 ## Ominaisuudet
 
 - **Pelin valinta alkunäkymässä**: SaiPan ottelut *U19 Pojat 1. divisioonasta*
@@ -16,10 +19,12 @@ valitaan **peli** salibandyn tulospalvelusta, minkä jälkeen avautuu
   korostettu. Voit myös jatkaa "ilman peliä".
 - Kunkin pelin laukaukset tallentuvat omaan koriinsa (`matchId`), joten eri
   ottelut eivät sekoitu.
-- Interaktiivinen SVG-salibandykaukalo (20 m × 40 m mittakaavassa)
+- SVG-kaukalon hyökkäyspää mittakaavassa (20 m × 20 m)
 - Laukauksen lisäys vetämällä: vedon suunta määrää lopputuloksen
-  (maali / torjunta / ohi / blokattu)
-- Tallennus **Firebase Firestoreen** – ilman konfiguraatiota tiedot menevät selaimen localStorageen
+  (→ maali, ← torjunta, ↑ ohi, ↓ blokki)
+- Erät (1., 2., 3., JA), erän tallennus ja lukituksen avaus, "Päätä ottelu" JA-erässä
+- Tallennus **Firebase Firestoreen**, toimii myös ilman verkkoa (offline-välimuisti).
+  Ilman Firebase-konfiguraatiota tiedot menevät selaimen localStorageen.
 
 ## Tulospalvelurajapinta
 
@@ -41,10 +46,14 @@ VITE_TORNEOPAL_TEAM_ID=29558
 
 ```bash
 npm install
-npm run dev
+npm run dev -- --host   # näkyy myös puhelimelle samassa wifissä
+npm test                # testit (Vitest)
+npm run lint            # oxlint
+npm run build           # tuotantobuild dist/-kansioon
 ```
 
-Sovellus avautuu osoitteeseen http://localhost:5173
+Sovellus avautuu osoitteeseen http://localhost:5173. GitHub Actions ajaa lintin,
+testit ja buildin jokaisella pushilla.
 
 ## Firebase-käyttöönotto
 
@@ -53,17 +62,13 @@ Sovellus avautuu osoitteeseen http://localhost:5173
 3. Täytä `.env`-tiedoston `VITE_FIREBASE_*`-arvot Firebase-konsolista.
 4. Käynnistä `npm run dev` uudelleen.
 
-Laukaukset tallennetaan `shots`-kokoelmaan. Kehitysvaiheen Firestore-säännöt:
+Tietokannan käyttöoikeudet ovat tiedostossa [`firestore.rules`](firestore.rules):
+dataan pääsevät vain siellä luetellut tilit. Uusien tilien luonti on estetty
+Firebase Authissa, joten uusi käyttäjä pitää luoda konsolista **ja** lisätä
+sääntöihin, minkä jälkeen säännöt julkaistaan:
 
-```
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /shots/{doc} {
-      allow read, write: if true; // kiristä ennen tuotantoa
-    }
-  }
-}
+```bash
+npx firebase-tools deploy --only firestore:rules
 ```
 
 ## Rakenne

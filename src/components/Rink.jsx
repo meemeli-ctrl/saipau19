@@ -7,6 +7,7 @@
  * joten ne skaalautuvat näytön koosta riippumatta.
  */
 import { useRef } from 'react'
+import { resolveOutcome } from './resolveOutcome'
 
 const W = 200
 const H = 400
@@ -61,20 +62,6 @@ export default function Rink({ shots = [], onAddShot, renderShot }) {
   // kun komponentti renderöityy uudelleen kesken vedon.
   const svgRef = useRef(null)
   const touchStart = useRef({ x: 0, y: 0, time: 0, active: false })
-
-  function resolveOutcome(deltaX, deltaY) {
-    const angle = Math.atan2(deltaY, deltaX) * (180 / Math.PI)
-    // Ylös: -90°, Oikea: 0°, Alas: 90°, Vasemmalle: 180° tai -180°
-    if (angle > -45 && angle < 45) {
-      return 'goal' // Oikealle = maali
-    } else if (angle >= 45 && angle < 135) {
-      return 'block' // Alas = blokki
-    } else if (angle > -135 && angle <= -45) {
-      return 'miss' // Ylös = ohi
-    } else {
-      return 'save' // Vasemmalle = torjunta
-    }
-  }
 
   function addShotFromGesture(e) {
     const start = touchStart.current
