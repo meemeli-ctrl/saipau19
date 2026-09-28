@@ -1,19 +1,47 @@
 # Käyttäjien lisääminen ja poistaminen
 
-Sovellukseen pääsee vain tunnuksella, jolla on **käyttöoikeus**. Käyttöoikeus
-on tietokannassa (`allowed_users`-kokoelma), joten muutos tulee voimaan
-**heti** – mitään ei tarvitse julkaista eikä committaa.
-
-Tunnus tarvitsee siis aina kaksi asiaa:
-1. **tunnuksen** Firebase Authenticationissa (sähköposti + salasana tai Google)
-2. **käyttöoikeuden** `allowed_users`-kokoelmassa
-
-Pelkkä tunnus ilman käyttöoikeutta = käyttäjä pääsee kirjautumaan, mutta näkee
-ilmoituksen "Ei käyttöoikeutta" eikä mikään tallennu. (Näin kävi jerelle 26.9.)
+Kuka tahansa voi kirjautua sovellukseen Googlella, mutta **dataan pääsee vain,
+jolle on annettu käyttöoikeus**. Muut näkevät ilmoituksen "Ei käyttöoikeutta",
+eikä mikään tallennu. Käyttöoikeus on tietokannassa, joten muutos tulee
+voimaan **heti** – mitään ei tarvitse julkaista eikä committaa.
 
 ---
 
-## Tapa 1: koneelta yhdellä komennolla (nopein)
+## Google-käyttäjä (helpoin – suositus valmentajille)
+
+Annat käyttöoikeuden **sähköpostiosoitteella etukäteen**. Valmentaja avaa
+sovelluksen, painaa "Kirjaudu Googlella" ja pääsee suoraan käyttämään.
+
+**Puhelimella tai koneella Firebase-konsolista:**
+1. Avaa https://console.firebase.google.com/project/saipau19/firestore/databases/-default-/data/~2Fallowed_emails
+   (jos kokoelmaa ei näy, valitse juuresta **Start collection** ja nimeksi
+   `allowed_emails`).
+2. **Add document**
+3. **Document ID:** valmentajan Gmail-osoite **pienillä kirjaimilla**,
+   esim. `valkku.virtanen@gmail.com`.
+4. Lisää yksi kenttä muistin tueksi, esim. nimi `nimi`, tyyppi *string*, arvo
+   "Valkku Virtanen". (Kentän sisällöllä ei ole väliä.)
+5. **Save**. Valmis – ilmoita valmentajalle osoite https://saipau19.web.app.
+
+**Tai koneelta:**
+
+```bash
+npm run kayttaja -- lisaa-google valkku.virtanen@gmail.com
+```
+
+**Poistaminen:** poista dokumentti `allowed_emails`-kokoelmasta, tai
+`npm run kayttaja -- poista valkku.virtanen@gmail.com`.
+
+> Toimii vain Google-kirjautumisella (Google on vahvistanut osoitteen). Jos
+> joku luo samalla osoitteella salasanatunnuksen, se ei pääse sisään.
+
+---
+
+## Salasanatunnus (jos valmentajalla ei ole Google-tiliä)
+
+Käyttöoikeus on tunnuksen UID:llä kokoelmassa `allowed_users`.
+
+### Koneelta yhdellä komennolla (nopein)
 
 Avaa Pääte (Terminal) ja aja repon kansiossa:
 
@@ -46,7 +74,7 @@ Vaatii, että Firebase CLI on kirjautunut koneella (`npx firebase-tools login`).
 
 ---
 
-## Tapa 2: puhelimella Firebase-konsolista (ilman konetta)
+### Puhelimella Firebase-konsolista
 
 Toimii selaimessa missä tahansa, esim. kaukalon laidalla.
 
@@ -72,24 +100,14 @@ ja uudelleen sisään.
 
 ---
 
-## Google-tilillä kirjautuvat
-
-Uusien tilien luonti sovelluksesta on estetty turvallisuussyistä, joten
-Google-käyttäjän tunnus pitää luoda näin:
-
-1. Konsoli → **Authentication → Settings → User actions** → laita
-   "Enable create (sign-up)" päälle.
-2. Käyttäjä kirjautuu sovellukseen kerran Googlella (näkee "Ei käyttöoikeutta").
-3. Laita asetus **heti takaisin pois**.
-4. Anna käyttöoikeus: `npm run kayttaja -- lisaa <gmail-osoite>` tai tapa 2 B.
-
-Helpompaa on antaa valmentajalle salasanatunnus (tapa 1).
-
----
-
 ## Hyvä tietää
 
 - **Omistaja** (ylläpitäjän Google-tili) pääsee aina sisään, vaikka
-  `allowed_users` tyhjenisi – se on varmistettu myös tietokannan säännöissä.
+  käyttöoikeuslistat tyhjenisivät – se on varmistettu tietokannan säännöissä.
+- `npm run kayttaja -- lista` näyttää kaikki tunnukset ja käyttöoikeudet, myös
+  lisätyt Google-osoitteet, jotka eivät ole vielä kirjautuneet.
+- Tunnuksia voi syntyä vieraille (kuka tahansa voi kirjautua Googlella). Ne
+  eivät näe eivätkä tallenna mitään. Turhat tunnukset voi poistaa konsolista:
+  Authentication → Users.
 - Sähköpostiosoitteet ovat vain tietokannassa, eivät tässä julkisessa repossa.
 - Käyttöoikeudet sisältyvät varmuuskopioon (`npm run backup`).

@@ -2,10 +2,15 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Pelkkä kirjautuminen ei riitä: dataan pääsevät vain tilit, joilla on
-    // dokumentti kokoelmassa allowed_users/{uid}. Uusi käyttäjä lisätään
-    // kirjoittamalla sinne dokumentti (npm run kayttaja -- lisaa <sähköposti>,
-    // tai Firebase-konsolista) – sääntöjä ei tarvitse julkaista uudelleen.
+    // Pelkkä kirjautuminen ei riitä (tunnuksen voi luoda kuka tahansa Googlella).
+    // Dataan pääsee, jos jompikumpi on olemassa:
+    //   allowed_users/{uid}     – salasanatunnukset (npm run kayttaja -- lisaa)
+    //   allowed_emails/{email}  – Google-käyttäjät: osoite lisätään etukäteen,
+    //                             ja käyttäjä pääsee sisään heti ensimmäisellä
+    //                             Google-kirjautumisella. Vaatii vahvistetun
+    //                             sähköpostin, jottei kukaan voi luoda
+    //                             salasanatunnusta toisen osoitteella.
+    // Muutokset tulevat voimaan heti, sääntöjä ei tarvitse julkaista uudelleen.
     //
     // Omistajan uid on kovakoodattu varmistukseksi: omistaja ei voi lukita
     // itseään ulos, vaikka allowed_users-kokoelma tyhjenisi.
@@ -13,10 +18,16 @@ service cloud.firestore {
       return request.auth.uid == 'Gj6mIjvRyEM5wRhitG1Qlubsems2';
     }
 
+    function hasVerifiedEmail() {
+      return request.auth.token.email_verified == true;
+    }
+
     function isAllowedUser() {
       return request.auth != null && (
         isOwner()
         || exists(/databases/$(database)/documents/allowed_users/$(request.auth.uid))
+        || (hasVerifiedEmail()
+            && exists(/databases/$(database)/documents/allowed_emails/$(request.auth.token.email.lower())))
       );
     }
 
@@ -25,6 +36,12 @@ service cloud.firestore {
     // (npm run kayttaja tai Firebase-konsoli), ei sovelluksesta.
     match /allowed_users/{uid} {
       allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    match /allowed_emails/{email} {
+      allow read: if request.auth != null && hasVerifiedEmail()
+        && request.auth.token.email.lower() == email;
       allow write: if false;
     }
 

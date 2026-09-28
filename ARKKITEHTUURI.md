@@ -211,8 +211,11 @@ Avain on sama julkinen lukuavain jota virallinen tulospalvelu käyttää selaime
 ### 6.4 Käyttöoikeudet (`firestore.rules`)
 
 Dataan pääsee vain tunnus, jolla on dokumentti **`allowed_users/{uid}`**
-(`exists()`-tarkistus säännöissä). Omistajan uid on lisäksi kovakoodattu
-varmistukseksi. `allowed_users`-kokoelmaan ei voi kirjoittaa sovelluksesta,
+(salasanatunnukset) **tai** vahvistetulla sähköpostilla (Google)
+**`allowed_emails/{email}`** (`exists()`-tarkistus säännöissä). Omistajan uid on
+lisäksi kovakoodattu varmistukseksi. Tunnusten luonti Firebase Authissa on
+auki, jotta lisätty Google-käyttäjä pääsee sisään suoraan – pelkkä tunnus ei
+anna pääsyä mihinkään. `allowed_users`-kokoelmaan ei voi kirjoittaa sovelluksesta,
 käyttäjä saa lukea vain oman dokumenttinsa (sovellus näyttää "Ei
 käyttöoikeutta" -näkymän, `useAccess`). Käyttäjän lisääminen tulee voimaan
 heti ilman julkaisua: [KAYTTAJAT.md](KAYTTAJAT.md), `npm run kayttaja`.
@@ -310,7 +313,7 @@ Järjestetty vakavuuden mukaan. Nämä ovat hyviä seuraavia tehtäviä.
    ensilatausta huonolla yhteydellä.
 8. Yksi harmiton lint-varoitus `useShots.js` (setState effectissä).
 
-**Ratkaistu 24.9.:** tietoturva (vain sallitut tilit, tilien luonti estetty),
+**Ratkaistu 24.–28.9.:** tietoturva (vain sallitut tilit, käyttöoikeus tietokannassa),
 CI ja testit, SECURITY.md, laukausten järjestys offline-tilassa, varmuuskopiot.
 
 ---

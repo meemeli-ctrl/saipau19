@@ -1,7 +1,11 @@
-// Käyttäjien hallinta. Käyttöoikeus = dokumentti kokoelmassa allowed_users/{uid}.
+// Käyttäjien hallinta. Käyttöoikeus on joko
+//   allowed_users/{uid}     – salasanatunnukset
+//   allowed_emails/{email}  – Google-käyttäjät (osoite etukäteen, pääsee sisään
+//                             suoraan ensimmäisellä Google-kirjautumisella)
 // Muutos tulee voimaan heti, sääntöjä ei tarvitse julkaista.
 //
 //   npm run kayttaja -- lista
+//   npm run kayttaja -- lisaa-google <gmail-osoite>
 //   npm run kayttaja -- lisaa <sähköposti> [salasana]
 //   npm run kayttaja -- poista <sähköposti>
 //   npm run kayttaja -- salasana <sähköposti> [uusi salasana]
@@ -10,6 +14,7 @@
 import { randomInt } from 'node:crypto'
 import {
   accessToken,
+  listCollection,
   createUser,
   deleteDocument,
   findUserByEmail,
@@ -33,6 +38,7 @@ function usage(message) {
   if (message) console.error(`${message}\n`)
   console.error(`Käyttö:
   npm run kayttaja -- lista
+  npm run kayttaja -- lisaa-google <gmail-osoite>
   npm run kayttaja -- lisaa <sähköposti> [salasana]
   npm run kayttaja -- poista <sähköposti>
   npm run kayttaja -- salasana <sähköposti> [uusi salasana]`)
@@ -43,16 +49,34 @@ const token = await accessToken()
 
 if (command === 'lista') {
   const users = await listUsers(token)
+  const emailDocs = await listCollection(token, 'allowed_emails')
+  const allowedEmails = new Set(emailDocs.map((d) => decodeURIComponent(d.name.split('/').pop())))
   console.log('Sähköposti                        Kirjautumistapa   Käyttöoikeus')
   for (const u of users) {
-    const allowed = await getDocument(token, 'allowed_users', u.localId)
+    const email = (u.email ?? '').toLowerCase()
+    const byUid = await getDocument(token, 'allowed_users', u.localId)
+    const byEmail = u.emailVerified && allowedEmails.has(email)
     const via = (u.providerUserInfo ?? []).map((p) => (p.providerId === 'google.com' ? 'Google' : 'salasana')).join(', ')
-    console.log(`${(u.email ?? '-').padEnd(34)}${via.padEnd(18)}${allowed ? 'kyllä' : 'EI'}`)
+    console.log(`${(u.email ?? '-').padEnd(34)}${via.padEnd(18)}${byUid || byEmail ? 'kyllä' : 'EI'}`)
+    allowedEmails.delete(email)
+  }
+  for (const email of allowedEmails) {
+    console.log(`${email.padEnd(34)}${'(ei vielä kirj.)'.padEnd(18)}kyllä – pääsee sisään Googlella`)
   }
   process.exit(0)
 }
 
 if (!email || !email.includes('@')) usage('Anna sähköpostiosoite.')
+
+if (command === 'lisaa-google') {
+  await writeDocument(token, 'allowed_emails', email, {
+    addedAt: { timestampValue: new Date().toISOString() },
+  })
+  console.log(`Käyttöoikeus annettu: ${email}. Voimassa heti.\n`)
+  console.log('Lähetä käyttäjälle:')
+  console.log(`  Avaa ${APP_URL} ja valitse "Kirjaudu Googlella" tilillä ${email}.`)
+  process.exit(0)
+}
 
 if (command === 'lisaa') {
   let user = await findUserByEmail(token, email)
@@ -81,8 +105,10 @@ if (command === 'lisaa') {
 
 if (command === 'poista') {
   const user = await findUserByEmail(token, email)
-  if (!user) usage(`Tunnusta ${email} ei ole.`)
-  await deleteDocument(token, 'allowed_users', user.localId)
+  const byEmail = await getDocument(token, 'allowed_emails', email)
+  if (!user && !byEmail) usage(`Osoitteella ${email} ei ole tunnusta eikä käyttöoikeutta.`)
+  if (user) await deleteDocument(token, 'allowed_users', user.localId)
+  if (byEmail) await deleteDocument(token, 'allowed_emails', email)
   console.log(`Käyttöoikeus poistettu: ${email}. Tunnus jää, mutta ei näe eikä tallenna dataa.`)
   process.exit(0)
 }
