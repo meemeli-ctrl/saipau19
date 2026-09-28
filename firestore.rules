@@ -2,22 +2,30 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Pelkkä kirjautuminen ei riitä: Google-kirjautuminen luo tilin kenelle
-    // tahansa. Vain tällä listalla olevat tilit pääsevät dataan käsiksi.
-    // Uuden käyttäjän lisääminen = lisää sähköposti tähän ja julkaise säännöt.
-    // Tämä tiedosto on julkisessa repossa: henkilökohtaiset osoitteet ovat
-    // uid-listassa (uid ei kerro kenestä on kyse), julkiset osoitteet
-    // sähköpostilistassa.
+    // Pelkkä kirjautuminen ei riitä: dataan pääsevät vain tilit, joilla on
+    // dokumentti kokoelmassa allowed_users/{uid}. Uusi käyttäjä lisätään
+    // kirjoittamalla sinne dokumentti (npm run kayttaja -- lisaa <sähköposti>,
+    // tai Firebase-konsolista) – sääntöjä ei tarvitse julkaista uudelleen.
+    //
+    // Omistajan uid on kovakoodattu varmistukseksi: omistaja ei voi lukita
+    // itseään ulos, vaikka allowed_users-kokoelma tyhjenisi.
+    function isOwner() {
+      return request.auth.uid == 'Gj6mIjvRyEM5wRhitG1Qlubsems2';
+    }
+
     function isAllowedUser() {
       return request.auth != null && (
-        request.auth.uid in [
-          'Gj6mIjvRyEM5wRhitG1Qlubsems2'
-        ]
-        || request.auth.token.email in [
-          'meemeli.kahkonen@gmail.com',
-          'veska@gg.wp'
-        ]
+        isOwner()
+        || exists(/databases/$(database)/documents/allowed_users/$(request.auth.uid))
       );
+    }
+
+    // Käyttäjä saa lukea vain oman käyttöoikeutensa (sovellus kertoo sen
+    // perusteella "ei käyttöoikeutta"). Kirjoitus vain ylläpitäjältä
+    // (npm run kayttaja tai Firebase-konsoli), ei sovelluksesta.
+    match /allowed_users/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
     }
 
     match /shots/{shotId} {

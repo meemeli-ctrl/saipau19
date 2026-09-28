@@ -4,6 +4,8 @@ import { auth, isFirebaseConfigured } from './firebase'
 import LoginView from './components/LoginView'
 import StartView from './components/StartView'
 import ShotMap from './components/ShotMap'
+import NoAccessView from './components/NoAccessView'
+import { useAccess } from './hooks/useAccess'
 import './App.css'
 
 // Erikoisarvo: käyttäjä valitsi "ilman peliä".
@@ -28,6 +30,7 @@ export default function App() {
   // aina näyttää pelin valinta ensin, ettei jää vahingossa merkitsemään
   // laukauksia vanhaan/väärään otteluun.
   const [selected, setSelected] = useState(null)
+  const access = useAccess(user)
 
   useEffect(() => {
     if (!isFirebaseConfigured || !auth) {
@@ -91,6 +94,11 @@ export default function App() {
         onBypassLocal={() => setBypassLocal(true)}
       />
     )
+  }
+
+  // Tunnus on olemassa, mutta käyttöoikeutta ei ole annettu (allowed_users).
+  if (access === 'denied') {
+    return <NoAccessView user={user} onLogout={handleLogout} />
   }
 
   if (!selected) {

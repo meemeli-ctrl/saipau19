@@ -51,7 +51,7 @@ function ShotMarker({ shot }) {
 }
 
 export default function ShotMap({ user, onLogout, match = null, onChangeMatch }) {
-  const { shots, completedBy, addShot, removeShot, clearShots, clearPeriodShots, lockedPeriods, lockPeriod, unlockPeriod, endMatch } = useShots(match?.id ?? null, user)
+  const { shots, completedBy, syncError, addShot, removeShot, clearShots, clearPeriodShots, lockedPeriods, lockPeriod, unlockPeriod, endMatch } = useShots(match?.id ?? null, user)
   const [period, setPeriod] = useState(1)
   // Lopputulossuodatin (Maalit / Torjunnat / Ohit / Blokit / Yht) – vain Kaikki-näkymässä.
   const [outcomeFilter, setOutcomeFilter] = useState('all')
@@ -131,7 +131,7 @@ export default function ShotMap({ user, onLogout, match = null, onChangeMatch })
         period: period === 'all' ? 1 : period,
         playerNumber: null,
         playerName: 'Penkki',
-      })
+      }).catch(() => {})
     },
     [addShot, period, isLocked, readOnly],
   )
@@ -142,7 +142,7 @@ export default function ShotMap({ user, onLogout, match = null, onChangeMatch })
       return
     }
     if (ownDisplayedShots.length > 0) {
-      removeShot(ownDisplayedShots[ownDisplayedShots.length - 1].id)
+      removeShot(ownDisplayedShots[ownDisplayedShots.length - 1].id).catch(() => {})
     }
   }, [ownDisplayedShots, removeShot, isLocked])
 
@@ -155,9 +155,9 @@ export default function ShotMap({ user, onLogout, match = null, onChangeMatch })
     const desc = period === 'all' ? 'kaikki ottelun laukaukset' : `${period === 'ja' ? 'jatkoajan' : `${period}. erän`} laukaukset`
     if (confirm(`Haluatko varmasti poistaa: ${desc}?`)) {
       if (period === 'all') {
-        clearShots()
+        clearShots().catch(() => {})
       } else {
-        clearPeriodShots(period)
+        clearPeriodShots(period).catch(() => {})
       }
     }
   }, [ownDisplayedShots.length, period, clearShots, clearPeriodShots, isLocked])
@@ -167,7 +167,7 @@ export default function ShotMap({ user, onLogout, match = null, onChangeMatch })
   const handleTogglePeriodLock = useCallback(() => {
     if (isLocked) {
       if (confirm('Avataanko erän lukitus? Erään voi sen jälkeen taas lisätä ja poistaa laukauksia.')) {
-        unlockPeriod(period)
+        unlockPeriod(period).catch(() => {})
       }
       return
     }
@@ -176,7 +176,7 @@ export default function ShotMap({ user, onLogout, match = null, onChangeMatch })
         'Tallennetaanko erä?\n\nErä lukitaan, eikä siihen voi lisätä laukauksia ennen kuin lukitus avataan.',
       )
     ) {
-      lockPeriod(period)
+      lockPeriod(period).catch(() => {})
     }
   }, [isLocked, period, lockPeriod, unlockPeriod])
 
@@ -192,8 +192,13 @@ export default function ShotMap({ user, onLogout, match = null, onChangeMatch })
     ) {
       return
     }
-    await Promise.all([1, 2, 3, 'ja'].map((p) => lockPeriod(p)))
-    await endMatch(match)
+    try {
+      await Promise.all([1, 2, 3, 'ja'].map((p) => lockPeriod(p)))
+      await endMatch(match)
+    } catch {
+      alert('Ottelun päättäminen epäonnistui – tietoja EI tallennettu. Katso punainen ilmoitus.')
+      return
+    }
     alert('Ottelu päätetty ja tiedot tallennettu.')
     onChangeMatch()
   }, [match, lockPeriod, endMatch, onChangeMatch])
@@ -297,6 +302,11 @@ export default function ShotMap({ user, onLogout, match = null, onChangeMatch })
 
       {/* 3. KAUKALOALUE: Puhdas, häiriötön ja esteetön piirtoalue */}
       <main className="shotmap-arena">
+        {syncError && (
+          <div className="shotmap-sync-error" role="alert">
+            ⚠ {syncError}
+          </div>
+        )}
         <div className="shotmap-rink-wrapper">
           <Rink
             shots={rinkShots}

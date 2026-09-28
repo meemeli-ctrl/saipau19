@@ -8,7 +8,7 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 
 export const PROJECT = 'saipau19'
-export const COLLECTIONS = ['shots', 'locked_periods', 'completed_matches']
+export const COLLECTIONS = ['shots', 'locked_periods', 'completed_matches', 'allowed_users']
 export const BACKUP_DIR = join(homedir(), 'saipau19-varmuuskopio')
 
 const DOCS = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents`
@@ -75,4 +75,52 @@ export async function writeDocument(token, collection, id, fields) {
 
 export async function deleteDocument(token, collection, id) {
   return api(token, `${DOCS}/${collection}/${encodeURIComponent(id)}`, { method: 'DELETE' })
+}
+
+export async function getDocument(token, collection, id) {
+  const res = await fetch(`${DOCS}/${collection}/${encodeURIComponent(id)}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (res.status === 404) return null
+  if (!res.ok) throw new Error(`Firestore GET ${res.status}: ${await res.text()}`)
+  return res.json()
+}
+
+// Firebase Authentication -ylläpito (Identity Toolkit). Toimii, vaikka uusien
+// tilien luonti sovelluksesta on estetty.
+const AUTH = `https://identitytoolkit.googleapis.com/v1/projects/${PROJECT}`
+
+async function authApi(token, path, body) {
+  const res = await fetch(`${AUTH}${path}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      'x-goog-user-project': PROJECT,
+    },
+    body: JSON.stringify(body ?? {}),
+  })
+  if (!res.ok) throw new Error(`Auth ${path} ${res.status}: ${await res.text()}`)
+  return res.json()
+}
+
+export async function findUserByEmail(token, email) {
+  const r = await authApi(token, '/accounts:lookup', { email: [email] })
+  return r.users?.[0] ?? null
+}
+
+export async function listUsers(token) {
+  const res = await fetch(`${AUTH}/accounts:batchGet?maxResults=1000`, {
+    headers: { Authorization: `Bearer ${token}`, 'x-goog-user-project': PROJECT },
+  })
+  if (!res.ok) throw new Error(`Auth list ${res.status}: ${await res.text()}`)
+  return (await res.json()).users ?? []
+}
+
+export async function createUser(token, email, password) {
+  return authApi(token, '/accounts', { email, password, emailVerified: false })
+}
+
+export async function setPassword(token, uid, password) {
+  return authApi(token, '/accounts:update', { localId: uid, password })
 }

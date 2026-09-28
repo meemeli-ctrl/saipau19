@@ -14,6 +14,7 @@ import {
 import { db, isFirebaseConfigured } from '../firebase'
 import { fetchMatchDetails } from '../api/tulospalvelu'
 import { useCompletedMatches } from './useCompletedMatches'
+import { describeFirestoreError } from '../firestoreErrors'
 
 const STORAGE_KEY = 'saipau19.shots'
 
@@ -75,6 +76,9 @@ export function useShots(matchId = null, user = null) {
   const activeMatch = norm(matchId)
   const [allShots, setAllShots] = useState(() => (isFirebaseConfigured ? [] : readLocal()))
   const [lockedPeriods, setLockedPeriods] = useState([])
+  // Viimeisin tietokantavirhe käyttäjälle näytettäväksi (esim. ei käyttöoikeutta).
+  const [syncError, setSyncError] = useState(null)
+  const reportError = useCallback((err) => setSyncError(describeFirestoreError(err)), [])
 
   // Lukittujen erien tilaus: kun erä on "tallennettu", sitä ei voi enää muokata.
   useEffect(() => {
@@ -99,8 +103,8 @@ export function useShots(matchId = null, user = null) {
         }
       })
       setLockedPeriods(matchLocks)
-    })
-  }, [activeMatch, user])
+    }, reportError)
+  }, [activeMatch, user, reportError])
 
   // Lukituksen avaus: jos erä on tallennettu vahingossa kesken pelin, sen
   // pitää saada auki – muuten koko erä jäisi lukkoon ottelun loppuun asti.
@@ -162,8 +166,8 @@ export function useShots(matchId = null, user = null) {
           }),
         ),
       )
-    })
-  }, [])
+    }, reportError)
+  }, [reportError])
 
   // Paikallinen tallennus
   useEffect(() => {
@@ -268,17 +272,36 @@ export function useShots(matchId = null, user = null) {
     });
   }, [activeMatch, ownShots, user]);
 
+  // Jokainen kirjoitus raportoi epäonnistumisensa näytölle ja heittää virheen
+  // eteenpäin, jottei kutsuja luule tallennuksen onnistuneen.
+  const writes = useMemo(() => {
+    const guard =
+      (fn) =>
+      async (...args) => {
+        try {
+          return await fn(...args)
+        } catch (err) {
+          reportError(err)
+          throw err
+        }
+      }
+    return {
+      addShot: guard(addShot),
+      removeShot: guard(removeShot),
+      clearShots: guard(clearShots),
+      clearPeriodShots: guard(clearPeriodShots),
+      lockPeriod: guard(lockPeriod),
+      unlockPeriod: guard(unlockPeriod),
+      endMatch: guard(endMatch),
+    }
+  }, [addShot, removeShot, clearShots, clearPeriodShots, lockPeriod, unlockPeriod, endMatch, reportError])
+
   return {
     shots,
     completedBy,
-    addShot,
-    removeShot,
-    clearShots,
-    clearPeriodShots,
     lockedPeriods,
-    lockPeriod,
-    unlockPeriod,
-    endMatch,
+    syncError,
+    ...writes,
     backend: isFirebaseConfigured ? 'Firestore' : 'localStorage',
   }
 }

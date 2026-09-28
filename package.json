@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "backup": "node scripts/backup-firestore.mjs",
-    "restore": "node scripts/restore-firestore.mjs"
+    "restore": "node scripts/restore-firestore.mjs",
+    "kayttaja": "node scripts/kayttaja.mjs"
   },
   "dependencies": {
     "firebase": "^12.18.0",

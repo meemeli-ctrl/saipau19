@@ -210,11 +210,17 @@ Avain on sama julkinen lukuavain jota virallinen tulospalvelu käyttää selaime
 
 ### 6.4 Käyttöoikeudet (`firestore.rules`)
 
-Kaikkiin kolmeen kokoelmaan: luku ja kirjoitus sallittu **vain sallituille
-tileille** (`isAllowedUser()`): uid-lista henkilökohtaisille osoitteille (repo on
-julkinen) ja sähköpostilista muille. Uusien tilien luonti on estetty Firebase
-Authissa, joten uusi käyttäjä pitää **sekä** luoda konsolista **että** lisätä
-sääntöihin, ja säännöt julkaista.
+Dataan pääsee vain tunnus, jolla on dokumentti **`allowed_users/{uid}`**
+(`exists()`-tarkistus säännöissä). Omistajan uid on lisäksi kovakoodattu
+varmistukseksi. `allowed_users`-kokoelmaan ei voi kirjoittaa sovelluksesta,
+käyttäjä saa lukea vain oman dokumenttinsa (sovellus näyttää "Ei
+käyttöoikeutta" -näkymän, `useAccess`). Käyttäjän lisääminen tulee voimaan
+heti ilman julkaisua: [KAYTTAJAT.md](KAYTTAJAT.md), `npm run kayttaja`.
+
+Tietokannan hylkäämät tallennukset näytetään punaisena ilmoituksena
+kaukalolla (`describeFirestoreError`). Ennen 28.9. ne katosivat hiljaa:
+jeren 26.9. ottelu merkittiin offline-tilassa ilman käyttöoikeutta, ja kun
+yhteys palasi, tietokanta hylkäsi laukaukset ja Firebase poisti ne puhelimesta.
 
 ---
 

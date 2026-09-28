@@ -70,14 +70,9 @@ testit ja buildin jokaisella pushilla.
 3. Täytä `.env`-tiedoston `VITE_FIREBASE_*`-arvot Firebase-konsolista.
 4. Käynnistä `npm run dev` uudelleen.
 
-Tietokannan käyttöoikeudet ovat tiedostossa [`firestore.rules`](firestore.rules):
-dataan pääsevät vain siellä luetellut tilit. Uusien tilien luonti on estetty
-Firebase Authissa, joten uusi käyttäjä pitää luoda konsolista **ja** lisätä
-sääntöihin, minkä jälkeen säännöt julkaistaan:
-
-```bash
-npx firebase-tools deploy --only firestore:rules
-```
+Dataan pääsevät vain tunnukset, joilla on käyttöoikeus (`allowed_users`-kokoelma,
+tarkistetaan [`firestore.rules`](firestore.rules):ssa). Käyttäjien lisääminen
+lennossa, ilman julkaisua: **[KAYTTAJAT.md](KAYTTAJAT.md)** (`npm run kayttaja`).
 
 ## Rakenne
 
